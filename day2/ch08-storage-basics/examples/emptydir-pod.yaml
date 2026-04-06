@@ -1,0 +1,31 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: emptydir-demo
+  labels:
+    app: emptydir-demo
+spec:
+  containers:
+    # 첫 번째 컨테이너: 데이터를 쓰는 역할
+    - name: writer
+      image: busybox:1.37
+      command: ["sh", "-c", "while true; do date >> /data/log.txt; sleep 5; done"]
+      volumeMounts:
+        - name: shared-data
+          mountPath: /data
+
+    # 두 번째 컨테이너: 데이터를 읽는 역할
+    - name: reader
+      image: busybox:1.37
+      command: ["sh", "-c", "tail -f /data/log.txt"]
+      volumeMounts:
+        - name: shared-data
+          mountPath: /data
+
+  volumes:
+    - name: shared-data
+      emptyDir: {}
+      # 메모리 기반 emptyDir을 사용하려면:
+      # emptyDir:
+      #   medium: Memory
+      #   sizeLimit: 64Mi

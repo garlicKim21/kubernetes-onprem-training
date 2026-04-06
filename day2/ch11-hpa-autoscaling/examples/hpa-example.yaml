@@ -1,0 +1,52 @@
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: example-hpa
+  namespace: default
+spec:
+  # 스케일링 대상 Deployment
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: example-app
+
+  # Pod 수 범위
+  minReplicas: 1
+  maxReplicas: 10
+
+  # 메트릭 기반 스케일링 조건
+  metrics:
+    # CPU 사용률 기반
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 50     # 평균 CPU 사용률 50% 목표
+
+    # 메모리 사용률 기반 (선택사항)
+    # - type: Resource
+    #   resource:
+    #     name: memory
+    #     target:
+    #       type: Utilization
+    #       averageUtilization: 70   # 평균 메모리 사용률 70% 목표
+
+  # 스케일링 동작 제어 (선택사항)
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 0        # 스케일 업 즉시 반영
+      policies:
+        - type: Percent
+          value: 100
+          periodSeconds: 15
+        - type: Pods
+          value: 4
+          periodSeconds: 15
+      selectPolicy: Max
+    scaleDown:
+      stabilizationWindowSeconds: 300      # 5분 안정화 후 스케일 다운
+      policies:
+        - type: Percent
+          value: 10
+          periodSeconds: 60

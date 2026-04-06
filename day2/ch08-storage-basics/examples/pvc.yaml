@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: demo-pvc
+  namespace: default
+spec:
+  accessModes:
+    - ReadWriteOnce                # PV와 동일한 접근 모드
+  resources:
+    requests:
+      storage: 1Gi                 # 요청 용량 (PV의 capacity 이하)
+  storageClassName: ""             # 빈 문자열 = 정적 프로비저닝 (동적 프로비저닝 방지)

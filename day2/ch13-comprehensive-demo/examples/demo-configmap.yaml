@@ -1,0 +1,57 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-html
+  namespace: demo
+data:
+  index.html: |
+    <!DOCTYPE html>
+    <html lang="ko">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Kubernetes Training Demo</title>
+      <style>
+        body {
+          font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+          max-width: 800px;
+          margin: 50px auto;
+          padding: 20px;
+          background-color: #f5f5f5;
+        }
+        .container {
+          background: white;
+          padding: 40px;
+          border-radius: 10px;
+          box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 { color: #2c3e50; }
+        .info { color: #7f8c8d; margin-top: 20px; }
+        .badge {
+          display: inline-block;
+          background: #3498db;
+          color: white;
+          padding: 5px 15px;
+          border-radius: 20px;
+          font-size: 14px;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <h1>Winitech Kubernetes Training</h1>
+        <span class="badge">Kubernetes v1.35.3</span>
+        <p>이 페이지는 쿠버네티스 클러스터에서 실행 중인 nginx Pod에서 제공됩니다.</p>
+        <div class="info">
+          <p><strong>구성 요소:</strong></p>
+          <ul>
+            <li>ConfigMap으로 HTML 콘텐츠 관리</li>
+            <li>Deployment로 복제본 관리</li>
+            <li>Service로 로드밸런싱</li>
+            <li>Gateway API HTTPRoute로 외부 노출</li>
+            <li>HPA로 자동 스케일링</li>
+          </ul>
+        </div>
+      </div>
+    </body>
+    </html>
