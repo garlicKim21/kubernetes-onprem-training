@@ -207,10 +207,10 @@ kubectl describe gateway shared-gateway -n gateway-system
 kubectl get httproute -A
 
 # 예상 출력:
-# NAMESPACE        NAME              HOSTNAMES                    PARENTREFS           AGE
-# monitoring       grafana-route     ["grafana.basphere.dev"]     ["shared-gateway"]   ...
-# kube-system      hubble-route      ["hubble.basphere.dev"]      ["shared-gateway"]   ...
-# headlamp         headlamp-route    ["headlamp.basphere.dev"]    ["shared-gateway"]   ...
+# NAMESPACE     NAME        HOSTNAMES                   AGE
+# headlamp      headlamp    ["headlamp.basphere.dev"]   ...
+# kube-system   hubble-ui   ["hubble.basphere.dev"]     ...
+# monitoring    grafana     ["grafana.basphere.dev"]    ...
 ```
 
 > 현재 Grafana, Hubble UI, Headlamp이 모두 `shared-gateway`를 통해 외부에 노출되어 있습니다.
@@ -219,7 +219,7 @@ kubectl get httproute -A
 
 ```bash
 # Grafana의 HTTPRoute 확인
-kubectl get httproute -n monitoring grafana-route -o yaml
+kubectl get httproute -n monitoring grafana -o yaml
 ```
 
 ---
@@ -394,10 +394,10 @@ curl -s http://echo.basphere.dev/health | jq .http.originalUrl
   ┌─────────────────────────────────────────────┐
   │ shared-gateway (172.16.200.1)               │
   │                                              │
-  │ Host: grafana.basphere.dev  → grafana-route  │──► Grafana Service
-  │ Host: hubble.basphere.dev   → hubble-route   │──► Hubble Service
-  │ Host: headlamp.basphere.dev → headlamp-route │──► Headlamp Service
-  │ Host: echo.basphere.dev     → echo-route     │──► echo-server Service
+  │ Host: grafana.basphere.dev  → grafana          │──► Grafana Service
+  │ Host: hubble.basphere.dev   → hubble-ui        │──► Hubble Service
+  │ Host: headlamp.basphere.dev → headlamp         │──► Headlamp Service
+  │ Host: echo.basphere.dev     → echo-route       │──► echo-server Service
   └─────────────────────────────────────────────┘
 ```
 
