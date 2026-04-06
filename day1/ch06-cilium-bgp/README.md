@@ -85,11 +85,10 @@ eBPF는 Linux 커널 내부에서 사용자 정의 프로그램을 실행할 수
 
 ```bash
 # Cilium이 kube-proxy를 대체하고 있음을 확인
-cilium status
+cilium config view | grep kube-proxy-replacement
 
-# 예상 출력 (일부):
-# KubeProxyReplacement:   true
-# ...
+# 예상 출력:
+# kube-proxy-replacement    true
 ```
 
 ---
@@ -372,7 +371,13 @@ cilium status
 #  \__/¯¯\__/    Hubble Relay:       OK
 #  \__/
 #
-# KubeProxyReplacement:   true
+# Cluster Pods:   xx/xx managed by Cilium
+# Helm chart version:    1.19.2
+
+# kube-proxy 대체 여부 확인
+cilium config view | grep kube-proxy-replacement
+# 예상 출력:
+# kube-proxy-replacement    true
 ```
 
 ### BGP 피어 상태 확인
