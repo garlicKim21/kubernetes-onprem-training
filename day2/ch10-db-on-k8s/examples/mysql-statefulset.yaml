@@ -65,7 +65,6 @@ spec:
                 - -h
                 - localhost
                 - -uroot
-                - -p${MYSQL_ROOT_PASSWORD}
             initialDelaySeconds: 10
             periodSeconds: 5
           livenessProbe:
@@ -75,8 +74,6 @@ spec:
                 - ping
                 - -h
                 - localhost
-                - -uroot
-                - -p${MYSQL_ROOT_PASSWORD}
             initialDelaySeconds: 30
             periodSeconds: 10
 

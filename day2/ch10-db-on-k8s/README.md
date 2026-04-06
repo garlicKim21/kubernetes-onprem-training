@@ -60,6 +60,97 @@ Deployment는 **상태가 없는(Stateless)** 애플리케이션에 적합합니
 
 ---
 
+## 1.1 Headless Service 상세 설명
+
+### 일반 Service vs Headless Service
+
+일반 Service는 **ClusterIP(가상 IP)**를 할당받아 로드밸런싱합니다:
+
+```
+일반 Service (ClusterIP: 10.96.100.50)
+┌──────────────────┐
+│  Client          │
+│  → 10.96.100.50  │  ← 가상 IP (kube-proxy/Cilium이 로드밸런싱)
+└────────┬─────────┘
+         │ (랜덤 분배)
+    ┌────┼────┐
+    ▼    ▼    ▼
+  Pod-A Pod-B Pod-C   ← 어떤 Pod로 갈지 모름
+```
+
+Headless Service는 **ClusterIP가 없습니다** (`clusterIP: None`):
+
+```
+Headless Service (ClusterIP: None)
+┌──────────────────────────────────────────────┐
+│  DNS 쿼리: mysql-svc.db-demo.svc.cluster.local  │
+│  → Pod IP 직접 반환: 10.244.1.5                  │
+│                                                    │
+│  DNS 쿼리: mysql-0.mysql-svc.db-demo.svc.cluster.local │
+│  → 특정 Pod IP: 10.244.1.5 (항상 mysql-0으로)       │
+└──────────────────────────────────────────────┘
+```
+
+### Headless Service가 필요한 이유
+
+| 사용 사례 | 일반 Service | Headless Service |
+|-----------|-------------|-----------------|
+| 웹 서버 (nginx) | ✅ 아무 Pod나 처리 가능 | 불필요 |
+| DB Master-Slave | ❌ Master를 지정할 수 없음 | ✅ `mysql-0`(Master) 직접 접근 |
+| 분산 DB (etcd, Cassandra) | ❌ 노드간 통신 불가 | ✅ 각 노드가 서로를 DNS로 찾음 |
+| StatefulSet 전반 | ❌ | ✅ 필수 |
+
+### DNS 형식
+
+StatefulSet과 Headless Service를 함께 사용하면 다음과 같은 DNS가 자동 생성됩니다:
+
+```
+{pod-name}.{headless-service-name}.{namespace}.svc.cluster.local
+```
+
+예시:
+- `mysql-0.mysql-svc.db-demo.svc.cluster.local` → mysql-0 Pod의 IP
+- `mysql-1.mysql-svc.db-demo.svc.cluster.local` → mysql-1 Pod의 IP
+
+이 DNS는 **Pod가 재시작되어 IP가 바뀌어도 항상 같은 Pod를 가리킵니다.** 이것이 StatefulSet의 "안정적인 네트워크 ID" 입니다.
+
+### 실습에서 확인
+
+```bash
+# Headless Service 확인 (CLUSTER-IP가 None인 것에 주목)
+kubectl get svc -n db-demo
+```
+
+**예상 출력:**
+```
+NAME        TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)    AGE
+mysql-svc   ClusterIP   None         <none>        3306/TCP   5m
+```
+
+```bash
+# DNS 테스트: Headless Service 이름으로 쿼리
+kubectl run dns-test -n db-demo --image=busybox:1.36 --rm -it --restart=Never -- nslookup mysql-svc.db-demo.svc.cluster.local
+```
+
+**예상 출력:**
+```
+Name:   mysql-svc.db-demo.svc.cluster.local
+Address: 10.244.x.x    ← Pod의 실제 IP (ClusterIP가 아님!)
+```
+
+```bash
+# DNS 테스트: 개별 Pod 이름으로 쿼리
+kubectl run dns-test2 -n db-demo --image=busybox:1.36 --rm -it --restart=Never -- nslookup mysql-0.mysql-svc.db-demo.svc.cluster.local
+```
+
+**예상 출력:**
+```
+Name:   mysql-0.mysql-svc.db-demo.svc.cluster.local
+Address: 10.244.x.x    ← mysql-0 Pod의 IP
+```
+
+---
+
 ## 2. MySQL on Kubernetes: 단계별 실습
 
 > **중요**: 아래 명령어를 순서대로 하나씩 실행하세요. 모든 명령어는 복사-붙여넣기로 실행할 수 있습니다.
@@ -433,6 +524,86 @@ kubectl get pv | grep db-demo
 | **Headless Service** | `clusterIP: None`으로 설정, Pod별 고유 DNS 제공 |
 | **volumeClaimTemplates** | Pod별 개별 PVC를 자동 생성하는 StatefulSet의 기능 |
 | **데이터 영속성** | Pod가 삭제/재생성되어도 PVC→PV→VMDK의 데이터는 보존됨 |
+
+---
+
+## 3. 더 나아가기: CloudNativePG (CNPG)
+
+지금까지 StatefulSet으로 MySQL을 직접 배포하는 방법을 배웠습니다. 이 방식은 동작하지만, 프로덕션 환경에서는 다음과 같은 한계가 있습니다:
+
+- **자동 Failover 없음**: Master Pod가 죽으면 수동으로 복구해야 합니다
+- **백업/복원이 수동**: 별도 CronJob으로 mysqldump 등을 설정해야 합니다
+- **레플리카 관리가 복잡**: Master-Slave 구성, 리플리케이션 설정을 직접 해야 합니다
+- **모니터링 별도 구성**: Exporter를 직접 붙여야 합니다
+
+### Kubernetes Operator 패턴
+
+이러한 운영 복잡성을 해결하기 위해 **Operator 패턴**이 등장했습니다.
+
+Operator는 "사람 운영자(Operator)의 지식을 코드로 자동화"한 것입니다:
+
+```
+일반 StatefulSet 방식:
+  사람이 직접 → DB 설치 → 리플리케이션 설정 → 백업 스크립트 → 장애 복구
+
+Operator 방식:
+  YAML 한 장 작성 → Operator가 자동으로 모든 것을 관리
+```
+
+### CloudNativePG란?
+
+[CloudNativePG](https://cloudnative-pg.io/)는 **PostgreSQL 전용 Kubernetes Operator**입니다.
+
+```yaml
+# CNPG로 PostgreSQL 클러스터를 생성하는 예시 (이것만 작성하면 끝!)
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: my-postgres
+spec:
+  instances: 3              # Primary 1 + Standby 2 자동 구성
+  storage:
+    size: 10Gi
+    storageClass: vsphere-csi
+  backup:
+    barmanObjectStore:       # 자동 백업 (S3/MinIO)
+      destinationPath: s3://backups/
+```
+
+이 YAML 하나로 CNPG Operator가 자동으로:
+
+| 기능 | 설명 |
+|------|------|
+| **HA 구성** | Primary 1대 + Standby 2대 자동 구성, 동기 리플리케이션 |
+| **자동 Failover** | Primary 장애 시 Standby가 15초 내 자동 승격 |
+| **자동 백업** | Barman 기반 연속 백업 (PITR: Point-in-Time Recovery) |
+| **Rolling Update** | PostgreSQL 버전 업그레이드 시 무중단 순차 업데이트 |
+| **모니터링** | Prometheus 메트릭 자동 노출, Grafana 대시보드 제공 |
+| **TLS** | Pod 간 암호화 통신 자동 설정 |
+| **Connection Pooling** | PgBouncer 내장 |
+
+### 주요 DB Operator 비교
+
+| Operator | DB | 특징 |
+|----------|-----|------|
+| **CloudNativePG** | PostgreSQL | CNCF Sandbox 프로젝트, 가장 활발한 커뮤니티 |
+| **Percona Operator** | MySQL/PostgreSQL/MongoDB | Percona 지원, 엔터프라이즈급 |
+| **Zalando Postgres Operator** | PostgreSQL | Zalando 개발, Patroni 기반 |
+| **MySQL Operator (Oracle)** | MySQL | Oracle 공식, InnoDB Cluster 관리 |
+| **Strimzi** | Apache Kafka | Kafka 전용 Operator |
+
+### StatefulSet vs Operator: 언제 무엇을 쓸까?
+
+| 상황 | 추천 |
+|------|------|
+| 학습/개발 환경 | StatefulSet (오늘 실습한 방식) |
+| 프로덕션 단일 인스턴스 | StatefulSet + 백업 스크립트 |
+| 프로덕션 HA | **Operator 사용 권장** |
+| 미션 크리티컬 | **Operator + 모니터링 + 백업 필수** |
+
+> **정리**: 오늘 실습한 StatefulSet 방식은 DB on K8s의 **기본 원리**를 이해하는 데 중요합니다.
+> 실무에서는 이 원리 위에 Operator를 얹어서 운영 자동화를 달성합니다.
+> "StatefulSet이 기초 체력, Operator가 실전 무기"라고 생각하면 됩니다.
 
 ---
 
