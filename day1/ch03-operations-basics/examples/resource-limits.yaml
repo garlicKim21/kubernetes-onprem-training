@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: resource-demo
+  labels:
+    purpose: resource-demo
+spec:
+  containers:
+    - name: app
+      image: nginx:1.27
+      resources:
+        requests:
+          cpu: "250m"       # 0.25 CPU 보장
+          memory: "128Mi"   # 128Mi 메모리 보장
+        limits:
+          cpu: "500m"       # 최대 0.5 CPU 사용 가능
+          memory: "256Mi"   # 최대 256Mi 메모리 (초과 시 OOMKilled)
