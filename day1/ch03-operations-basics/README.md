@@ -462,36 +462,244 @@ kubectl describe pod probe-demo
 
 ---
 
-## 강사 데모 시나리오
+## 5. ConfigMap → Pod 적용 실습 (환경 변수 + 볼륨 마운트)
+
+하나의 Pod에서 ConfigMap을 **환경 변수**와 **볼륨 마운트** 두 가지 방식으로 동시에 사용하는 실습입니다.
+
+### ConfigMap과 Pod 생성
 
 ```bash
-# 1. ConfigMap 생성 및 확인
-kubectl apply -f examples/configmap.yaml
-kubectl describe configmap app-config-yaml
+kubectl apply -f examples/configmap-pod.yaml
+```
 
-# 2. Secret 생성 및 확인
-kubectl apply -f examples/secret.yaml
-kubectl get secret db-secret-yaml -o jsonpath='{.data.username}' | base64 -d
-echo
+**examples/configmap-pod.yaml** 주요 구조:
 
-# 3. 리소스 제한 Pod 생성
-kubectl apply -f examples/resource-limits.yaml
-kubectl get pod resource-demo -o jsonpath='{.status.qosClass}'
-echo
+```yaml
+# ConfigMap: demo-config
+# - APP_ENV, APP_PORT → 환경 변수로 주입
+# - app.properties    → 볼륨 마운트로 파일로 주입
 
-# 4. Probe Pod 생성 및 관찰
-kubectl apply -f examples/probes.yaml
-kubectl describe pod probe-demo | grep -A 20 "Containers:"
+# Pod: configmap-combined-demo
+# - env[].valueFrom.configMapKeyRef → 개별 키를 환경 변수로
+# - volumes[].configMap + volumeMounts → 파일로 마운트
+```
 
-# 5. 정리
-kubectl delete -f examples/
-kubectl delete configmap app-config app-properties 2>/dev/null
-kubectl delete secret db-secret 2>/dev/null
+### Pod 상태 확인
+
+```bash
+kubectl get pod configmap-combined-demo
+```
+
+**예상 출력:**
+```
+NAME                      READY   STATUS    RESTARTS   AGE
+configmap-combined-demo   1/1     Running   0          10s
+```
+
+### 환경 변수로 주입된 값 확인
+
+```bash
+kubectl exec configmap-combined-demo -- env | grep APP_
+```
+
+**예상 출력:**
+```
+APP_ENV=production
+APP_PORT=8080
+```
+
+### 볼륨 마운트로 주입된 파일 확인
+
+```bash
+kubectl exec configmap-combined-demo -- cat /etc/config/app.properties
+```
+
+**예상 출력:**
+```
+database.host=db.example.com
+database.port=5432
+database.name=myapp
+cache.ttl=300
+```
+
+> **핵심**: 환경 변수 방식은 단순한 키-값에 적합하고, 볼륨 마운트 방식은 설정 파일 전체를 주입할 때 유용합니다. 실무에서는 두 방식을 함께 사용하는 경우가 많습니다.
+
+### 정리
+
+```bash
+kubectl delete -f examples/configmap-pod.yaml
 ```
 
 ---
 
-## 핵심 정리
+## 6. Secret → Pod 적용 실습 (환경 변수 + 볼륨 마운트)
+
+Secret도 ConfigMap과 동일한 방식으로 Pod에 주입할 수 있습니다. 하나의 Pod에서 두 가지 방식을 동시에 사용합니다.
+
+### Secret과 Pod 생성
+
+```bash
+kubectl apply -f examples/secret-pod.yaml
+```
+
+### Pod 상태 확인
+
+```bash
+kubectl get pod secret-combined-demo
+```
+
+**예상 출력:**
+```
+NAME                    READY   STATUS    RESTARTS   AGE
+secret-combined-demo    1/1     Running   0          10s
+```
+
+### 환경 변수로 주입된 Secret 확인
+
+```bash
+kubectl exec secret-combined-demo -- sh -c 'echo DB_USER=$DB_USER'
+```
+
+**예상 출력:**
+```
+DB_USER=admin
+```
+
+### 볼륨 마운트된 Secret 파일 확인
+
+```bash
+# 마운트된 파일 목록 확인
+kubectl exec secret-combined-demo -- ls /etc/secrets/
+```
+
+**예상 출력:**
+```
+connection-string
+password
+username
+```
+
+```bash
+# 각 파일 내용 확인
+kubectl exec secret-combined-demo -- cat /etc/secrets/username
+```
+
+**예상 출력:**
+```
+admin
+```
+
+```bash
+kubectl exec secret-combined-demo -- cat /etc/secrets/password
+```
+
+**예상 출력:**
+```
+S3cur3P@ssw0rd!
+```
+
+> **차이점**: Secret을 볼륨으로 마운트하면 각 키가 별도의 **파일**로 생성됩니다. 파일 권한이 `0644`(기본값)로 설정되며, `defaultMode`로 변경할 수 있습니다.
+
+### 정리
+
+```bash
+kubectl delete -f examples/secret-pod.yaml
+```
+
+---
+
+## 7. Probe 실패 체험
+
+Liveness Probe와 Readiness Probe가 실패했을 때 쿠버네티스가 어떻게 반응하는지 직접 관찰합니다.
+
+### 7.1 Liveness Probe 실패 → 컨테이너 재시작 관찰
+
+이 Pod는 시작 시 `/tmp/healthy` 파일을 생성하고, **30초 후에 삭제**합니다. Liveness Probe는 이 파일의 존재를 확인하므로, 파일 삭제 후 Probe가 실패하여 컨테이너가 재시작됩니다.
+
+```bash
+kubectl apply -f examples/probe-fail-demo.yaml
+```
+
+```bash
+# Pod 상태를 실시간으로 관찰 (약 1분간)
+kubectl get pod liveness-fail-demo -w
+```
+
+**예상 출력 (시간 경과에 따라):**
+```
+NAME                 READY   STATUS    RESTARTS   AGE
+liveness-fail-demo   1/1     Running   0          5s
+liveness-fail-demo   1/1     Running   1 (1s ago)   50s
+liveness-fail-demo   1/1     Running   2 (1s ago)   1m40s
+```
+
+> Ctrl+C로 watch를 중단합니다.
+
+> **관찰 포인트**: RESTARTS 카운트가 증가하는 것을 확인하세요. kubelet이 Liveness Probe 실패를 감지하고 컨테이너를 재시작하고 있습니다.
+
+```bash
+# 이벤트에서 Probe 실패 기록 확인
+kubectl describe pod liveness-fail-demo | tail -15
+```
+
+**예상 출력 (Events 섹션):**
+```
+Events:
+  Type     Reason     Age   From     Message
+  ----     ------     ----  ----     -------
+  Normal   Scheduled  2m    ...      Successfully assigned ...
+  Normal   Pulled     90s   ...      Container image "busybox:1.37" already present
+  Warning  Unhealthy  60s   kubelet  Liveness probe failed: cat: can't open '/tmp/healthy': No such file or directory
+  Normal   Killing    45s   kubelet  Container app failed liveness probe, will be restarted
+```
+
+### 7.2 Readiness Probe 실패 → 트래픽 차단 관찰
+
+```bash
+# Readiness Probe 데모 Pod 상태 관찰
+kubectl get pod readiness-fail-demo -w
+```
+
+**예상 출력 (시간 경과에 따라):**
+```
+NAME                   READY   STATUS    RESTARTS   AGE
+readiness-fail-demo    1/1     Running   0          10s
+readiness-fail-demo    0/1     Running   0          55s
+```
+
+> **관찰 포인트**: READY가 `1/1`에서 `0/1`로 변경됩니다. Readiness Probe가 실패하면 컨테이너는 **재시작되지 않지만**, Service 엔드포인트에서 제거되어 트래픽을 받지 않습니다.
+
+```bash
+# Readiness 조건 상세 확인
+kubectl describe pod readiness-fail-demo | grep -A 5 "Conditions:"
+```
+
+**예상 출력:**
+```
+Conditions:
+  Type              Status
+  Initialized       True
+  Ready             False    ← Readiness Probe 실패로 False
+  ContainersReady   False    ← 컨테이너가 Ready 상태가 아님
+  PodScheduled      True
+```
+
+### Liveness vs Readiness 동작 비교 요약
+
+| Probe | 실패 시 동작 | RESTARTS 증가 | READY 상태 변화 |
+|-------|-------------|---------------|----------------|
+| **Liveness** | 컨테이너 **재시작** | 예 | 재시작 중 일시적 0/1 |
+| **Readiness** | 트래픽 **차단** (재시작 없음) | 아니오 | 1/1 → 0/1 |
+
+### 정리
+
+```bash
+kubectl delete -f examples/probe-fail-demo.yaml
+```
+
+---
+
+## 핵심 요약
 
 1. **ConfigMap**은 설정 데이터를 Pod와 분리하여 관리합니다 (환경 변수 또는 볼륨 마운트)
 2. **Secret**은 민감한 데이터를 Base64 인코딩하여 저장합니다 (추가 암호화 설정 권장)

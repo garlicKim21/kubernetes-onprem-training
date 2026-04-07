@@ -1,0 +1,70 @@
+# Liveness Probe 실패 데모
+# /tmp/healthy 파일이 30초 후에 삭제되어 liveness probe가 실패합니다.
+# kubelet이 컨테이너를 재시작하는 것을 관찰할 수 있습니다.
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: liveness-fail-demo
+  labels:
+    purpose: probe-demo
+spec:
+  containers:
+    - name: app
+      image: busybox:1.37
+      # 시작 시 /tmp/healthy 파일 생성 → 30초 후 삭제
+      command:
+        - sh
+        - -c
+        - |
+          echo "Container started"
+          touch /tmp/healthy
+          echo "Created /tmp/healthy"
+          sleep 30
+          echo "Removing /tmp/healthy (liveness will fail soon)"
+          rm -f /tmp/healthy
+          echo "Sleeping forever..."
+          sleep 99999
+      livenessProbe:
+        exec:
+          command:
+            - cat
+            - /tmp/healthy
+        initialDelaySeconds: 5
+        periodSeconds: 5
+        failureThreshold: 3
+---
+# Readiness Probe 실패 데모
+# 앱이 시작 후 40초간만 ready 상태를 유지합니다.
+# 이후 readiness probe가 실패하여 Service 엔드포인트에서 제거됩니다.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: readiness-fail-demo
+  labels:
+    purpose: probe-demo
+    app: readiness-demo
+spec:
+  containers:
+    - name: app
+      image: busybox:1.37
+      command:
+        - sh
+        - -c
+        - |
+          echo "Container started"
+          touch /tmp/ready
+          echo "App is ready"
+          sleep 40
+          echo "App entering maintenance mode"
+          rm -f /tmp/ready
+          echo "Sleeping (not ready)..."
+          sleep 99999
+      readinessProbe:
+        exec:
+          command:
+            - cat
+            - /tmp/ready
+        initialDelaySeconds: 5
+        periodSeconds: 5
+        failureThreshold: 3

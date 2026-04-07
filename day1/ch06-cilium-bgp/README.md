@@ -283,75 +283,150 @@ spec:
             values: ["never-match"]
 ```
 
-### 리소스별 설명
+### 리소스별 상세 설명 (필드별 해설)
 
 #### CiliumLoadBalancerIPPool
 
 ```yaml
+apiVersion: cilium.io/v2           # Cilium CRD API 버전
+kind: CiliumLoadBalancerIPPool     # LoadBalancer Service에 할당할 IP 풀을 정의하는 CRD
+metadata:
+  name: lb-pool                    # IP Pool 이름 (클러스터 내 유일해야 함)
 spec:
-  blocks:
-    - cidr: "172.16.200.0/24"    # LoadBalancer IP 할당 대역
-  allowFirstLastIPs: "No"        # .0과 .255는 사용하지 않음
+  blocks:                          # IP 주소 블록 목록 (여러 개 정의 가능)
+    - cidr: "172.16.200.0/24"      # 할당 가능한 IP 대역
+                                   # /24 = 256개 IP (172.16.200.0 ~ 172.16.200.255)
+  allowFirstLastIPs: "No"          # 네트워크 주소(.0)와 브로드캐스트 주소(.255) 사용 여부
+                                   # "No" → .0과 .255를 제외하여 네트워크 충돌 방지
+                                   # 실제 사용 가능: 172.16.200.1 ~ 172.16.200.254 (253개)
 ```
 
-→ 172.16.200.1 ~ 172.16.200.254 범위에서 IP가 할당됩니다.
+> IP Pool은 여러 개 정의할 수 있으며, `serviceSelector`를 사용하면 특정 Service에만 특정 Pool을 적용할 수도 있습니다.
 
 #### CiliumBGPClusterConfig
 
 ```yaml
+apiVersion: cilium.io/v2           # Cilium CRD API 버전
+kind: CiliumBGPClusterConfig       # 클러스터 수준의 BGP 설정을 정의하는 CRD
+metadata:
+  name: bgp-cluster               # BGP 클러스터 설정 이름
 spec:
-  nodeSelector:
+  nodeSelector:                    # BGP를 실행할 노드를 선택하는 조건
     matchExpressions:
       - key: node-role.kubernetes.io/control-plane
-        operator: DoesNotExist   # Worker 노드에서만 BGP 실행
-  bgpInstances:
-    - name: default
-      localASN: 65100            # 클러스터의 ASN
-      peers:
-        - name: opnsense
-          peerASN: 65000         # OPNsense 라우터의 ASN
-          peerAddress: 10.254.0.1  # OPNsense 라우터 IP
-          peerConfigRef:
-            name: peer-config    # 피어 설정 참조
+        operator: DoesNotExist     # ★ "DoesNotExist" 의미:
+                                   #   이 라벨 키가 "존재하지 않는" 노드만 선택
+                                   #   = Control Plane 라벨이 없는 노드 = Worker 노드만
+                                   #
+                                   # Control Plane 노드에는 "node-role.kubernetes.io/control-plane"
+                                   # 라벨이 자동으로 붙어 있으므로, 이 조건에서 제외됩니다.
+                                   # → Worker 노드(wrk-0, wrk-1, wrk-2)에서만 BGP 실행
+  bgpInstances:                    # BGP 인스턴스 목록 (보통 1개)
+    - name: default                # BGP 인스턴스 이름
+      localASN: 65100              # 이 클러스터의 AS 번호 (Autonomous System Number)
+                                   # 65100은 프라이빗 ASN 범위(64512~65534) 내의 값
+      peers:                       # BGP 피어(상대방 라우터) 목록
+        - name: opnsense           # 피어 이름 (식별용)
+          peerASN: 65000           # 피어(OPNsense 라우터)의 AS 번호
+          peerAddress: 10.254.0.1  # 피어의 IP 주소 (OPNsense 라우터)
+          peerConfigRef:           # 이 피어에 적용할 세부 설정을 참조
+            name: peer-config      # CiliumBGPPeerConfig 리소스의 이름
 ```
 
-→ Worker 노드만 ASN 65100으로 OPNsense(65000)와 BGP 세션을 맺습니다.
+> `nodeSelector`의 `DoesNotExist` 연산자는 해당 키의 라벨이 아예 존재하지 않는 노드를 선택합니다. `Exists`는 반대로 라벨이 존재하는 노드를 선택합니다.
 
 #### CiliumBGPPeerConfig
 
 ```yaml
+apiVersion: cilium.io/v2           # Cilium CRD API 버전
+kind: CiliumBGPPeerConfig          # BGP 피어와의 세션 세부 설정
+metadata:
+  name: peer-config                # CiliumBGPClusterConfig에서 peerConfigRef로 참조됨
 spec:
-  families:
-    - afi: ipv4                  # IPv4 주소 체계
-      safi: unicast              # 유니캐스트 라우팅
-      advertisements:
+  families:                        # BGP Address Family 설정
+                                   # Address Family = BGP에서 교환하는 라우팅 정보의 종류
+    - afi: ipv4                    # AFI (Address Family Identifier)
+                                   # ipv4 = IPv4 주소 체계의 경로를 교환
+                                   # (ipv6도 가능하지만 이 클러스터에서는 IPv4만 사용)
+      safi: unicast                # SAFI (Subsequent Address Family Identifier)
+                                   # unicast = 일반적인 유니캐스트 라우팅
+                                   # (multicast 등도 가능하지만 일반적으로 unicast 사용)
+      advertisements:              # 이 Family에서 사용할 광고(Advertisement) 설정 선택
         matchLabels:
-          advertise: lb          # "advertise: lb" 라벨의 광고 설정 사용
-  gracefulRestart:
-    enabled: true                # Graceful Restart 활성화
-    restartTimeSeconds: 120      # 재시작 대기 시간 120초
+          advertise: lb            # "advertise: lb" 라벨을 가진 CiliumBGPAdvertisement를 사용
+                                   # → 아래 CiliumBGPAdvertisement의 labels와 매칭됨
+  gracefulRestart:                 # BGP Graceful Restart 설정
+                                   # BGP 세션이 일시적으로 끊겼을 때 경로를 즉시 삭제하지 않는 기능
+    enabled: true                  # Graceful Restart 활성화
+                                   # → Cilium Agent가 재시작되어도 트래픽 단절 최소화
+    restartTimeSeconds: 120        # 피어가 세션 복구를 기다리는 시간 (초)
+                                   # 120초 내에 세션이 재수립되면 경로를 유지
+                                   # 120초가 지나면 피어가 해당 경로를 삭제
 ```
+
+> **Graceful Restart**는 프로덕션 환경에서 매우 중요합니다. Cilium 업그레이드나 노드 재부팅 시 BGP 세션이 일시적으로 끊기더라도 라우터가 바로 경로를 삭제하지 않아 서비스 중단을 방지합니다.
 
 #### CiliumBGPAdvertisement
 
 ```yaml
+apiVersion: cilium.io/v2           # Cilium CRD API 버전
+kind: CiliumBGPAdvertisement       # BGP로 어떤 경로를 광고할지 정의
 metadata:
+  name: lb-advertisement           # 광고 설정 이름
   labels:
-    advertise: lb                # PeerConfig에서 참조하는 라벨
+    advertise: lb                  # ★ 이 라벨이 CiliumBGPPeerConfig의
+                                   #   advertisements.matchLabels와 매칭됨
+                                   #   → peer-config가 이 광고 설정을 사용
 spec:
-  advertisements:
-    - advertisementType: Service
+  advertisements:                  # 광고할 경로 목록
+    - advertisementType: Service   # 광고 유형: "Service"
+                                   # = 쿠버네티스 Service 리소스의 IP를 광고
+                                   # (다른 옵션: "PodCIDR" = Pod 네트워크 대역 광고)
       service:
-        addresses:
-          - LoadBalancerIP       # LoadBalancer Service의 IP를 광고
-      selector:
+        addresses:                 # 광고할 Service IP의 종류
+          - LoadBalancerIP         # LoadBalancer 타입 Service의 External IP만 광고
+                                   # (다른 옵션: "ClusterIP", "ExternalIP")
+      selector:                    # 어떤 Service를 광고 대상으로 선택할지
         matchExpressions:
-          - key: somekey
-            operator: NotIn
-            values: ["never-match"]   # 사실상 모든 Service에 적용
+          - key: somekey           # ★★ "모든 Service 매칭" 패턴 ★★
+            operator: NotIn        #
+            values: ["never-match"]# 이 조건의 의미:
+                                   # "somekey 라벨의 값이 'never-match'가 아닌 Service"
+                                   # → somekey 라벨이 없는 Service도 이 조건을 만족함!
+                                   #   (라벨이 없으면 NotIn 조건에 걸리지 않으므로 통과)
+                                   # → 결과적으로 모든 Service가 매칭됨
+                                   #
+                                   # 왜 이런 패턴을 쓰나?
+                                   # selector를 비워두면 "아무것도 매칭 안 됨"이 기본값.
+                                   # 모든 Service를 매칭하려면 이처럼 절대 매칭되지 않는
+                                   # 값으로 NotIn을 사용하는 트릭이 필요합니다.
+                                   #
+                                   # 특정 Service만 광고하려면:
+                                   #   matchLabels:
+                                   #     expose-via-bgp: "true"
+                                   # 처럼 명시적으로 라벨을 지정할 수 있습니다.
 ```
 
-→ 모든 LoadBalancer Service의 External IP를 BGP로 광고합니다.
+> **"NotIn + never-match" 패턴 요약**: `selector`에서 `matchExpressions`의 `NotIn`은 "이 값이 아닌 것"을 선택합니다. 라벨이 아예 없는 리소스도 `NotIn` 조건을 만족하므로, 실질적으로 **모든 리소스를 선택**하는 "match all" 패턴이 됩니다.
+
+### CRD 간 참조 관계 요약
+
+```
+  CiliumLoadBalancerIPPool          CiliumBGPClusterConfig
+  (IP 풀 정의)                      (BGP 피어 + 노드 선택)
+  cidr: 172.16.200.0/24                   │
+          │                               │ peerConfigRef
+          │                               ▼
+          │                     CiliumBGPPeerConfig
+          │                     (AFI/SAFI + Graceful Restart)
+          │                               │
+          │                               │ advertisements.matchLabels
+          │                               ▼
+          │                     CiliumBGPAdvertisement
+          │                     (어떤 Service IP를 광고할지)
+          │                               │
+          └──── IP 할당 ──────── Service ──┘── BGP 경로 광고
+```
 
 ---
 
@@ -492,7 +567,7 @@ hubble observe --type l7 --protocol DNS
 
 ---
 
-## 핵심 정리
+## 핵심 요약
 
 1. **Cilium**은 eBPF 기반 CNI로, kube-proxy를 대체하여 더 효율적인 네트워킹을 제공합니다
 2. 온프레미스에서는 클라우드 LB가 없으므로, **Cilium LB-IPAM + BGP**로 LoadBalancer Service를 구현합니다

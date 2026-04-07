@@ -282,9 +282,7 @@ kubectl get ns
 
 ---
 
-## 강사 데모
-
-### 클러스터 상태 확인
+## 데모: 우리 교육 클러스터 상태 확인
 
 ```bash
 # 노드 확인
@@ -312,7 +310,7 @@ kubectl get nodes -o jsonpath='{.items[0].status.nodeInfo.containerRuntimeVersio
 
 ---
 
-## 핵심 정리
+## 핵심 요약
 
 1. **컨테이너**는 VM과 달리 커널을 공유하며, namespace와 cgroup으로 격리합니다
 2. **containerd**는 CRI를 구현한 고수준 런타임이고, **runc**는 OCI 표준의 저수준 런타임입니다
