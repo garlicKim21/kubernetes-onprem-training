@@ -19,15 +19,9 @@
 - **컨테이너 간 데이터 공유 불가**: 같은 Pod 내 여러 컨테이너가 데이터를 공유할 수 없습니다
 - **데이터베이스 운영 불가**: 영구 저장이 필요한 워크로드(DB, 파일 서버 등)를 실행할 수 없습니다
 
-```
-[ 컨테이너 재시작 시 ]
-
-  컨테이너 v1              컨테이너 v2 (재시작 후)
-  ┌──────────────┐         ┌──────────────┐
-  │ /app/data    │         │ /app/data    │
-  │  ├─ db.sqlite│  ──X──▶ │  (비어 있음)  │
-  │  └─ logs/    │  손실!   │              │
-  └──────────────┘         └──────────────┘
+```mermaid
+graph LR
+    v1["<b>컨테이너 v1</b><br/>/app/data<br/>├─ db.sqlite<br/>└─ logs/"] -- "재시작 시<br/>❌ 손실!" --> v2["<b>컨테이너 v2 (재시작 후)</b><br/>/app/data<br/>(비어 있음)"]
 ```
 
 이 문제를 해결하기 위해 쿠버네티스는 **Volume** 시스템을 제공합니다.
@@ -172,20 +166,16 @@ PersistentVolumeClaim(PVC)은 **사용자(개발자)가 스토리지를 요청**
 - 원하는 용량, 접근 모드 등을 명시
 - 쿠버네티스가 조건에 맞는 PV를 자동으로 **바인딩(Binding)**
 
-```
-  관리자 영역                              사용자 영역
-  ┌────────────────┐    바인딩       ┌────────────────┐
-  │ PersistentVolume│ ◄──────────── │ PersistentVolume│
-  │ (PV)           │               │  Claim (PVC)    │
-  │                │               │                 │
-  │ capacity: 10Gi │               │ request: 5Gi    │
-  │ accessModes:   │               │ accessModes:    │
-  │  - RWO         │               │  - RWO          │
-  └────────────────┘               └────────────────┘
-         │
-         ▼
-  [ 실제 스토리지 ]
-  NFS, VMDK, iSCSI 등
+```mermaid
+graph LR
+    subgraph admin["관리자 영역"]
+        pv["<b>PersistentVolume (PV)</b><br/>capacity: 10Gi<br/>accessModes: RWO"]
+    end
+    subgraph user["사용자 영역"]
+        pvc["<b>PersistentVolumeClaim (PVC)</b><br/>request: 5Gi<br/>accessModes: RWO"]
+    end
+    pvc -- "바인딩" --> pv
+    pv --> storage["실제 스토리지<br/>NFS, VMDK, iSCSI 등"]
 ```
 
 ### PVC 스펙

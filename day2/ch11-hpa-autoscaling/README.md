@@ -13,19 +13,12 @@
 
 HPA(Horizontal Pod Autoscaler)는 **CPU 사용량, 메모리 사용량, 또는 커스텀 메트릭**을 기반으로 **Pod의 수를 자동으로 조절**하는 쿠버네티스 리소스입니다.
 
-```
-                          ┌────────────────┐
-                          │  metrics-server │
-                          │  (메트릭 수집)   │
-                          └───────┬────────┘
-                                  │ 메트릭 조회
-                                  ▼
-┌────────────────┐      ┌─────────────────┐      ┌──────────────────┐
-│ Deployment     │◀─────│ HPA Controller  │─────▶│ Deployment       │
-│ (현재 2 Pod)   │ 조회  │                 │ 스케일│ (4 Pod로 변경)   │
-│                │      │ CPU > 50%이면   │      │                  │
-│ Pod Pod        │      │ Pod 수 증가     │      │ Pod Pod Pod Pod  │
-└────────────────┘      └─────────────────┘      └──────────────────┘
+```mermaid
+graph TD
+    metrics["<b>metrics-server</b><br/>(메트릭 수집)"]
+    metrics -- "메트릭 조회" --> hpa["<b>HPA Controller</b><br/>CPU > 50%이면<br/>Pod 수 증가"]
+    deploy_before["Deployment<br/>(현재 2 Pod)"] -- "조회" --> hpa
+    hpa -- "스케일" --> deploy_after["Deployment<br/>(4 Pod로 변경)"]
 ```
 
 ### 동작 흐름
