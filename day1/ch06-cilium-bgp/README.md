@@ -603,16 +603,15 @@ Client → OPNsense → [wrk-0 | wrk-1 | wrk-2 | wrk-3 | wrk-4 | wrk-5] → (내
 ```
 
 ```bash
-# 1. nginx 배포 (2개 replicas)
-kubectl create deployment nginx-bgp-test --image=nginx:1.27 --replicas=2
+# 1. Deployment + LoadBalancer Service 배포
+kubectl apply -f examples/nginx-lb-test.yaml
 
-# 2. Cluster 모드 LoadBalancer Service 생성 (기본값)
-kubectl expose deployment nginx-bgp-test --port=80 --type=LoadBalancer --name=bgp-cluster-svc
-
-# 3. 잠시 대기 후 IP 확인
+# 2. 잠시 대기 후 IP 확인
 sleep 5
 kubectl get svc bgp-cluster-svc
 ```
+
+> 📄 `examples/nginx-lb-test.yaml`에 Deployment(2 replicas)와 LoadBalancer Service가 함께 정의되어 있습니다.
 
 **예상 출력:**
 ```
@@ -702,8 +701,7 @@ Cluster 모드:                              Local 모드:
 
 ```bash
 # 8. 데모 리소스 정리
-kubectl delete svc bgp-cluster-svc
-kubectl delete deployment nginx-bgp-test
+kubectl delete -f examples/nginx-lb-test.yaml
 ```
 
 ---

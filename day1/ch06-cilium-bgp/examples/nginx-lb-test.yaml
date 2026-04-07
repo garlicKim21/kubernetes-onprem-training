@@ -1,0 +1,37 @@
+# externalTrafficPolicy 데모용 nginx + LoadBalancer Service
+# 이 매니페스트로 Cluster vs Local 모드에서 BGP 광고 차이를 확인합니다
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-bgp-test
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: nginx-bgp-test
+  template:
+    metadata:
+      labels:
+        app: nginx-bgp-test
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.27
+          ports:
+            - containerPort: 80
+---
+# 처음에는 externalTrafficPolicy: Cluster (기본값)로 생성합니다.
+# 데모 중에 kubectl patch로 Local로 변경하여 BGP 광고 변화를 관찰합니다.
+apiVersion: v1
+kind: Service
+metadata:
+  name: bgp-cluster-svc
+spec:
+  type: LoadBalancer
+  externalTrafficPolicy: Cluster    # ← 데모 중 Local로 변경
+  selector:
+    app: nginx-bgp-test
+  ports:
+    - port: 80
+      targetPort: 80
