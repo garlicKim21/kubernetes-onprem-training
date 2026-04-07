@@ -449,31 +449,9 @@ kubectl get deploy nginx-deploy -o jsonpath='{.spec.template.spec.containers[0].
 
 ---
 
-## 강사 데모 시나리오
-
-### 전체 흐름 데모
+## 정리
 
 ```bash
-# 1. Deployment 생성 (nginx:1.26)
-kubectl apply -f examples/deployment.yaml
-kubectl get deploy,rs,pods -l managed-by=deployment
-
-# 2. 스케일링 (3 → 5)
-kubectl scale deployment nginx-deploy --replicas=5
-kubectl get pods -l managed-by=deployment
-
-# 3. Rolling Update (1.26 → 1.27)
-kubectl set image deployment/nginx-deploy nginx=nginx:1.27
-kubectl rollout status deployment/nginx-deploy
-
-# 4. ReplicaSet 두 개 확인
-kubectl get rs
-
-# 5. 롤백
-kubectl rollout undo deployment/nginx-deploy
-kubectl rollout status deployment/nginx-deploy
-
-# 6. 정리
 kubectl delete deployment nginx-deploy
 kubectl delete replicaset nginx-rs 2>/dev/null
 kubectl delete pod my-nginx 2>/dev/null
@@ -481,7 +459,7 @@ kubectl delete pod my-nginx 2>/dev/null
 
 ---
 
-## 핵심 정리
+## 핵심 요약
 
 1. **Pod**는 쿠버네티스의 최소 배포 단위이며, 일시적(ephemeral)입니다
 2. **Label과 Selector**는 리소스를 분류하고 연결하는 핵심 메커니즘입니다

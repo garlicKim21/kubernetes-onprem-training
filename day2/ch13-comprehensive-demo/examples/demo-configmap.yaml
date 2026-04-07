@@ -39,7 +39,7 @@ data:
     </head>
     <body>
       <div class="container">
-        <h1>Winitech Kubernetes Training</h1>
+        <h1>Basphere Kubernetes Training</h1>
         <span class="badge">Kubernetes v1.35.3</span>
         <p>이 페이지는 쿠버네티스 클러스터에서 실행 중인 nginx Pod에서 제공됩니다.</p>
         <div class="info">

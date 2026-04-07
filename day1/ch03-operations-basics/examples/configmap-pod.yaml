@@ -1,0 +1,47 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: demo-config
+data:
+  APP_ENV: "production"
+  APP_PORT: "8080"
+  LOG_LEVEL: "info"
+  app.properties: |
+    database.host=db.example.com
+    database.port=5432
+    database.name=myapp
+    cache.ttl=300
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: configmap-combined-demo
+spec:
+  containers:
+    - name: app
+      image: busybox:1.37
+      command: ["sh", "-c", "echo '=== 환경 변수 ===' && env | grep APP_ && echo '=== 마운트된 파일 ===' && cat /etc/config/app.properties && sleep 3600"]
+      # 환경 변수로 주입
+      env:
+        - name: APP_ENV
+          valueFrom:
+            configMapKeyRef:
+              name: demo-config
+              key: APP_ENV
+        - name: APP_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: demo-config
+              key: APP_PORT
+      # 볼륨 마운트로 파일 주입
+      volumeMounts:
+        - name: config-volume
+          mountPath: /etc/config
+          readOnly: true
+  volumes:
+    - name: config-volume
+      configMap:
+        name: demo-config
+        items:
+          - key: app.properties
+            path: app.properties

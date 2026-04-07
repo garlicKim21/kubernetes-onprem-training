@@ -161,7 +161,7 @@ curl -s https://demo.basphere.dev
 <html>
 <head><title>Kubernetes Training Demo</title></head>
 <body>
-<h1>Winitech Kubernetes Training</h1>
+<h1>Basphere Kubernetes Training</h1>
 <p>이 페이지는 쿠버네티스 클러스터에서 실행 중인 nginx에서 제공됩니다.</p>
 <p>Pod: (hostname)</p>
 </body>

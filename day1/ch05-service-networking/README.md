@@ -365,41 +365,15 @@ kubectl get svc nginx-loadbalancer
 
 ---
 
-## 강사 데모 시나리오
+## 정리
 
 ```bash
-# 1. Deployment 배포
-kubectl apply -f examples/deployment-nginx.yaml
-kubectl get pods -l app=nginx-svc-demo
-
-# 2. ClusterIP Service 생성 및 테스트
-kubectl apply -f examples/service-clusterip.yaml
-kubectl get svc nginx-clusterip
-kubectl get endpoints nginx-clusterip
-
-# 3. busybox에서 접근 테스트
-kubectl run curl-test --image=curlimages/curl --rm -it --restart=Never -- \
-  curl -s http://nginx-clusterip
-
-# 4. DNS 테스트
-kubectl run dns-test --image=busybox:1.37 --rm -it --restart=Never -- \
-  nslookup nginx-clusterip
-
-# 5. NodePort Service
-kubectl apply -f examples/service-nodeport.yaml
-kubectl get svc nginx-nodeport
-
-# 6. LoadBalancer Service (Cilium LB-IPAM 데모)
-kubectl apply -f examples/service-loadbalancer.yaml
-kubectl get svc nginx-loadbalancer -w  # External IP 할당 관찰
-
-# 7. 정리
 kubectl delete -f examples/
 ```
 
 ---
 
-## 핵심 정리
+## 핵심 요약
 
 1. 쿠버네티스의 모든 Pod는 **고유 IP**를 가지며, NAT 없이 통신합니다
 2. **Service**는 Pod 그룹에 대한 안정적인 엔드포인트(IP + DNS)를 제공합니다
