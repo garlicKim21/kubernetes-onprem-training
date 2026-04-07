@@ -68,9 +68,14 @@ Headless Service는 **ClusterIP가 없습니다** (`clusterIP: None`):
 
 ```mermaid
 graph TD
-    dns1["DNS 쿼리:<br/>mysql-svc.db-demo.svc.cluster.local"] -- "Pod IP 직접 반환" --> ip1["10.244.1.5"]
-    dns2["DNS 쿼리:<br/>mysql-0.mysql-svc.db-demo.svc.cluster.local"] -- "특정 Pod IP<br/>(항상 mysql-0으로)" --> ip2["10.244.1.5"]
+    dns1["DNS: mysql-svc..."] -- "Pod IP 직접 반환" --> ip1["10.244.1.5"]
+    dns2["DNS: mysql-0.mysql-svc..."] -- "특정 Pod IP 반환" --> ip2["10.244.1.5"]
 ```
+
+**Headless Service DNS 쿼리 예시:**
+
+- `mysql-svc.db-demo.svc.cluster.local` → Pod의 실제 IP를 직접 반환 (ClusterIP가 아님)
+- `mysql-0.mysql-svc.db-demo.svc.cluster.local` → 항상 mysql-0 Pod의 IP를 반환
 
 ### Headless Service가 필요한 이유
 

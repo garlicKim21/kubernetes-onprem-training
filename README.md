@@ -54,22 +54,31 @@
 
 ```mermaid
 graph TD
-    subgraph Router["OPNsense Router<br/>ASN 65000 · 10.254.0.1<br/>BGP Peering ↔ Cluster ASN 65100<br/>LB IP Pool: 172.16.200.0/24"]
+    ROUTER["🌐 OPNsense Router<br/>ASN 65000 · 10.254.0.1<br/>BGP ↔ Cluster ASN 65100<br/>LB Pool: 172.16.200.0/24"]
+    VIP["Control Plane VIP<br/>10.254.0.10"]
+
+    ROUTER --> VIP
+
+    subgraph CP["Control Plane (3 nodes)"]
+        ctrl0["ctrl-0<br/>API Server · etcd<br/>Scheduler · Ctrl Mgr"]
+        ctrl1["ctrl-1<br/>API Server · etcd<br/>Scheduler · Ctrl Mgr"]
+        ctrl2["ctrl-2<br/>API Server · etcd<br/>Scheduler · Ctrl Mgr"]
     end
 
-    Router --- VIP["Control Plane VIP: 10.254.0.10<br/>(API Server)"]
+    VIP --> ctrl0
+    VIP --> ctrl1
+    VIP --> ctrl2
 
-    VIP --- ctrl0["<b>ctrl-0</b><br/>Control Plane<br/>• API Server<br/>• etcd<br/>• Scheduler<br/>• Ctrl Mgr"]
-    VIP --- ctrl1["<b>ctrl-1</b><br/>Control Plane<br/>• API Server<br/>• etcd<br/>• Scheduler<br/>• Ctrl Mgr"]
-    VIP --- ctrl2["<b>ctrl-2</b><br/>Control Plane<br/>• API Server<br/>• etcd<br/>• Scheduler<br/>• Ctrl Mgr"]
+    subgraph WK["Worker Nodes (6 nodes)"]
+        wrk0["wrk-0<br/>kubelet · Cilium · containerd"]
+        wrk1["wrk-1<br/>kubelet · Cilium · containerd"]
+        wrk2["wrk-2<br/>kubelet · Cilium · containerd"]
+        wrk3["wrk-3<br/>kubelet · Cilium · containerd"]
+        wrk4["wrk-4<br/>kubelet · Cilium · containerd"]
+        wrk5["wrk-5<br/>kubelet · Cilium · containerd"]
+    end
 
-    ctrl0 --- wrk0["<b>wrk-0</b> Worker<br/>• kubelet<br/>• Cilium<br/>• containerd"]
-    ctrl1 --- wrk1["<b>wrk-1</b> Worker<br/>• kubelet<br/>• Cilium<br/>• containerd"]
-    ctrl2 --- wrk2["<b>wrk-2</b> Worker<br/>• kubelet<br/>• Cilium<br/>• containerd"]
-
-    wrk3["<b>wrk-3</b> Worker<br/>• kubelet<br/>• Cilium<br/>• containerd"]
-    wrk4["<b>wrk-4</b> Worker<br/>• kubelet<br/>• Cilium<br/>• containerd"]
-    wrk5["<b>wrk-5</b> Worker<br/>• kubelet<br/>• Cilium<br/>• containerd"]
+    CP --> WK
 ```
 
 ---
