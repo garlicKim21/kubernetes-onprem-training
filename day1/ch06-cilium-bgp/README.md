@@ -583,6 +583,131 @@ hubble observe --type l7 --protocol DNS
 
 ---
 
+## 8. 심화 데모: externalTrafficPolicy와 BGP 경로 광고
+
+이 데모는 `externalTrafficPolicy`에 따라 BGP 경로 광고가 어떻게 달라지는지 보여줍니다.
+
+### 기본 동작 (externalTrafficPolicy: Cluster)
+
+기본값인 `Cluster` 모드에서는 **모든 Worker 노드**가 LoadBalancer IP를 BGP로 광고합니다:
+
+```
+모든 노드가 광고: "나를 통해 172.16.200.x에 도달할 수 있다"
+
+Client → OPNsense → [wrk-0 | wrk-1 | wrk-2 | wrk-3 | wrk-4 | wrk-5] → (내부 재분배) → Pod
+                     ↑ 6개 노드 모두 BGP 광고
+
+문제점:
+- Pod가 없는 노드로 트래픽이 갈 수 있음 → 다른 노드로 재전송 (불필요한 hop)
+- SNAT 발생 → 클라이언트 원본 IP가 Pod에서 보이지 않음
+```
+
+```bash
+# 1. nginx 배포 (2개 replicas)
+kubectl create deployment nginx-bgp-test --image=nginx:1.27 --replicas=2
+
+# 2. Cluster 모드 LoadBalancer Service 생성 (기본값)
+kubectl expose deployment nginx-bgp-test --port=80 --type=LoadBalancer --name=bgp-cluster-svc
+
+# 3. 잠시 대기 후 IP 확인
+sleep 5
+kubectl get svc bgp-cluster-svc
+```
+
+**예상 출력:**
+```
+NAME              TYPE           CLUSTER-IP      EXTERNAL-IP    PORT(S)        AGE
+bgp-cluster-svc   LoadBalancer   10.x.x.x       172.16.200.x   80:3xxxx/TCP   5s
+```
+
+```bash
+# 4. BGP 광고 확인 — 모든 Worker가 경로를 광고
+cilium bgp routes advertised ipv4 unicast
+```
+
+**예상 출력 (6개 노드 모두 광고):**
+```
+Node    VRouter   Peer         Prefix              NextHop        Age   Attrs
+wrk-0   65100     10.254.0.1   172.16.200.x/32     10.254.0.227   5s    ...
+wrk-1   65100     10.254.0.1   172.16.200.x/32     10.254.0.228   5s    ...
+wrk-2   65100     10.254.0.1   172.16.200.x/32     10.254.0.229   5s    ...
+wrk-3   65100     10.254.0.1   172.16.200.x/32     10.254.0.231   5s    ...
+wrk-4   65100     10.254.0.1   172.16.200.x/32     10.254.0.232   5s    ...
+wrk-5   65100     10.254.0.1   172.16.200.x/32     10.254.0.233   5s    ...
+```
+
+> Pod는 2개뿐인데, 6개 노드가 모두 "나를 통해 도달 가능하다"고 광고합니다.
+
+### Local 모드로 전환 (externalTrafficPolicy: Local)
+
+```bash
+# 5. externalTrafficPolicy를 Local로 변경
+kubectl patch svc bgp-cluster-svc -p '{"spec":{"externalTrafficPolicy":"Local"}}'
+```
+
+```bash
+# 6. Pod가 어떤 노드에 있는지 확인
+kubectl get pods -l app=nginx-bgp-test -o wide
+```
+
+**예상 출력 (예시):**
+```
+NAME                              READY   STATUS    NODE
+nginx-bgp-test-xxxxx-abc12       1/1     Running   wrk-1
+nginx-bgp-test-xxxxx-def34       1/1     Running   wrk-4
+```
+
+```bash
+# 7. BGP 광고 다시 확인 — Pod가 있는 노드만 광고!
+cilium bgp routes advertised ipv4 unicast
+```
+
+**예상 출력 (2개 노드만 광고):**
+```
+Node    VRouter   Peer         Prefix              NextHop        Age   Attrs
+wrk-1   65100     10.254.0.1   172.16.200.x/32     10.254.0.228   3s    ...
+wrk-4   65100     10.254.0.1   172.16.200.x/32     10.254.0.232   3s    ...
+```
+
+> **Pod가 실제로 존재하는 wrk-1과 wrk-4만 BGP 경로를 광고합니다!**
+
+### 비교 정리
+
+```
+Cluster 모드:                              Local 모드:
+┌──────┐  ┌──────┐  ┌──────┐             ┌──────┐  ┌──────┐  ┌──────┐
+│wrk-0 │  │wrk-1 │  │wrk-2 │             │wrk-0 │  │wrk-1 │  │wrk-2 │
+│ BGP✅│  │ BGP✅│  │ BGP✅│             │      │  │ BGP✅│  │      │
+│      │  │Pod-A │  │      │             │      │  │Pod-A │  │      │
+└──────┘  └──────┘  └──────┘             └──────┘  └──────┘  └──────┘
+┌──────┐  ┌──────┐  ┌──────┐             ┌──────┐  ┌──────┐  ┌──────┐
+│wrk-3 │  │wrk-4 │  │wrk-5 │             │wrk-3 │  │wrk-4 │  │wrk-5 │
+│ BGP✅│  │ BGP✅│  │ BGP✅│             │      │  │ BGP✅│  │      │
+│      │  │Pod-B │  │      │             │      │  │Pod-B │  │      │
+└──────┘  └──────┘  └──────┘             └──────┘  └──────┘  └──────┘
+  6개 노드 모두 광고                        Pod 있는 2개 노드만 광고
+  → 불필요한 hop 가능                       → 직접 도달
+  → SNAT 발생 (원본 IP 손실)                → 클라이언트 IP 보존
+```
+
+| 항목 | Cluster (기본) | Local |
+|------|:---:|:---:|
+| BGP 경로 광고 | 모든 노드 | Pod가 있는 노드만 |
+| 불필요한 hop | 발생 가능 | 없음 |
+| 클라이언트 IP 보존 | ❌ (SNAT) | ✅ |
+| 부하 분산 균등성 | 높음 (모든 노드 경유) | Pod 배치에 따라 다름 |
+| 사용 시나리오 | 일반적인 서비스 | 클라이언트 IP가 필요한 경우 (로깅, 인증) |
+
+### 정리
+
+```bash
+# 8. 데모 리소스 정리
+kubectl delete svc bgp-cluster-svc
+kubectl delete deployment nginx-bgp-test
+```
+
+---
+
 ## 핵심 요약
 
 1. **Cilium**은 eBPF 기반 CNI로, kube-proxy를 대체하여 더 효율적인 네트워킹을 제공합니다
