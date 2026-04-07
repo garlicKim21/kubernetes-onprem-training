@@ -1,5 +1,7 @@
 # Ch.13 종합 데모: 배포부터 오토스케일링까지
 
+> 🎓 **강사 데모** — 이 섹션은 강사가 시연합니다. 학생들은 Headlamp이나 Grafana에서 결과를 확인할 수 있습니다.
+
 ## 학습 목표
 
 - 지금까지 배운 내용을 종합하여 실제 서비스 배포 시나리오를 경험한다
@@ -307,17 +309,21 @@ No resources found in demo namespace.
 
 ## 핵심 요약
 
-이 데모에서 사용한 쿠버네티스 리소스:
+| 개념 | 설명 |
+|------|------|
+| **Namespace** | 리소스 격리 단위. 팀/환경별 분리에 활용 |
+| **ConfigMap** | 설정 데이터(HTML 파일 등)를 볼륨 마운트로 Pod에 주입 |
+| **Deployment** | 무상태 앱 배포 및 Rolling Update 관리 |
+| **Service (ClusterIP)** | Pod 그룹에 대한 안정적인 내부 엔드포인트 |
+| **HTTPRoute** | Gateway API를 통한 외부 HTTP 라우팅 (호스트 기반) |
+| **HPA** | CPU/메모리 메트릭 기반 Pod 수 자동 조절 |
+| **Grafana** | Prometheus 메트릭을 시각화하여 실시간 모니터링 |
 
-| 리소스 | 역할 |
-|--------|------|
-| **Namespace** | 리소스 격리 |
-| **ConfigMap** | 설정 데이터 (HTML 파일) |
-| **Deployment** | 무상태 앱 배포 및 관리 |
-| **Service** | Pod 로드밸런싱 및 서비스 디스커버리 |
-| **HTTPRoute** | Gateway API를 통한 외부 HTTP 라우팅 |
-| **HPA** | CPU 기반 자동 스케일링 |
+1. 실제 서비스 배포는 **Namespace → ConfigMap/Secret → Deployment → Service → HTTPRoute** 순서로 진행합니다
+2. **HPA**를 설정하면 부하에 따라 Pod 수가 자동으로 조절됩니다
+3. **Grafana**에서 CPU 사용량, Pod 수 변화, 네트워크 트래픽을 실시간으로 확인할 수 있습니다
+4. 이 흐름은 실무에서 마이크로서비스를 배포하는 **기본 패턴**입니다
 
 ---
 
-> **다음 챕터**: Ch.14에서는 실무에서 알아두면 좋은 **추가 주제들**을 살펴봅니다.
+> **다음 챕터**: [Ch.14 실무 적용 가이드](../ch14-real-world/README.md)

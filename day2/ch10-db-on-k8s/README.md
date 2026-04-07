@@ -151,6 +151,8 @@ Address: 10.244.x.x    ← mysql-0 Pod의 IP
 
 ---
 
+> 🎓 **강사 데모** — 이 섹션은 강사가 시연합니다. 학생들은 Headlamp이나 Grafana에서 결과를 확인할 수 있습니다.
+
 ## 2. MySQL on Kubernetes: 단계별 실습
 
 > **중요**: 아래 명령어를 순서대로 하나씩 실행하세요. 모든 명령어는 복사-붙여넣기로 실행할 수 있습니다.
@@ -607,4 +609,4 @@ spec:
 
 ---
 
-> **다음 챕터**: Ch.11에서는 **HPA(Horizontal Pod Autoscaler)**를 이용한 오토스케일링을 학습합니다.
+> **다음 챕터**: [Ch.11 HPA: Horizontal Pod Autoscaler](../ch11-hpa-autoscaling/README.md)

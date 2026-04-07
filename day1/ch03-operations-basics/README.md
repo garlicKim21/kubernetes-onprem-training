@@ -9,6 +9,8 @@
 
 ---
 
+> 💻 **학생 실습** — 이 섹션은 각자의 lab 네임스페이스에서 직접 실습합니다.
+
 ## 1. ConfigMap
 
 ### ConfigMap이란?
@@ -340,6 +342,8 @@ kubectl get pod resource-demo -o jsonpath='{.status.qosClass}'
 ```
 
 ---
+
+> 🎓 **강사 데모** — 이 섹션은 강사가 시연합니다. 학생들은 Headlamp이나 Grafana에서 결과를 확인할 수 있습니다.
 
 ## 4. Probe (헬스 체크)
 

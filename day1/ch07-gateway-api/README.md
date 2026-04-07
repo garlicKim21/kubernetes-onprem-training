@@ -1,5 +1,7 @@
 # Chapter 07 — Gateway API를 이용한 HTTP 라우팅
 
+> 🎓 **강사 데모** — 이 섹션은 강사가 시연합니다. 학생들은 Headlamp이나 Grafana에서 결과를 확인할 수 있습니다.
+
 ## 학습 목표
 
 - Gateway API가 등장한 배경과 Ingress와의 차이를 이해한다

@@ -1,5 +1,7 @@
 # Chapter 04 — kubeadm 클러스터 구축
 
+> 🎓 **강사 데모** — 이 섹션은 강사가 시연합니다. 학생들은 Headlamp이나 Grafana에서 결과를 확인할 수 있습니다.
+
 > **참고:** 이 섹션은 강사가 별도 VM 환경에서 데모로 진행합니다. 수강생은 과정을 관찰하며, 실제 교육 클러스터에는 영향을 주지 않습니다.
 
 ## 학습 목표
@@ -252,6 +254,9 @@ kubectl get nodes -o wide
 # wrk-0    Ready   <none>          v1.35.3
 # wrk-1    Ready   <none>          v1.35.3
 # wrk-2    Ready   <none>          v1.35.3
+# wrk-3    Ready   <none>          v1.35.3
+# wrk-4    Ready   <none>          v1.35.3
+# wrk-5    Ready   <none>          v1.35.3
 ```
 
 ---
