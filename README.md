@@ -97,16 +97,45 @@
 
 ---
 
-## 수강생 접속 정보
+## 시작하기
 
-### Step 1: kubeconfig 다운로드
+아래 순서대로 진행하면 실습 환경이 준비됩니다.
+
+### Step 1: 교재 다운로드
+
+이 저장소에 모든 실습 자료와 예제 매니페스트가 포함되어 있습니다. 먼저 교재를 다운로드하세요.
+
+```bash
+git clone https://github.com/garlicKim21/kubernetes-onprem-training.git
+cd kubernetes-onprem-training
+```
+
+> `git`이 설치되어 있지 않다면, GitHub 페이지에서 **Code → Download ZIP**으로도 다운로드할 수 있습니다.
+
+### Step 2: kubectl 설치
+
+실습에 사용할 `kubectl`을 설치합니다. (이미 설치되어 있다면 건너뛰세요. Headlamp 웹 대시보드로도 대부분의 실습이 가능합니다.)
+
+```bash
+# Linux
+curl -LO "https://dl.k8s.io/release/v1.35.3/bin/linux/amd64/kubectl"
+chmod +x kubectl && sudo mv kubectl /usr/local/bin/
+
+# macOS
+brew install kubectl
+
+# Windows
+choco install kubernetes-cli
+```
+
+### Step 3: kubeconfig 다운로드
 
 1. **[https://lab.basphere.dev](https://lab.basphere.dev)** 에 접속합니다
 2. 비밀번호를 입력합니다 (강사가 구두로 안내)
 3. 자신의 Lab 번호 버튼을 클릭하여 `kubeconfig.yaml` 파일을 다운로드합니다
 4. 다운로드한 파일에는 개인 네임스페이스(`lab-XX`)가 기본 설정되어 있습니다
 
-### Step 2: kubectl 설정
+### Step 4: kubectl 설정 및 접속 확인
 
 ```bash
 # 다운로드한 kubeconfig 파일을 설정 (파일 경로는 다운로드 위치에 맞게 조정)
@@ -122,9 +151,9 @@ kubectl get nodes
 kubectl get pods -A
 ```
 
-> 정상적으로 9개 노드가 표시되면 접속 성공입니다.
+> 정상적으로 9개 노드가 표시되면 접속 성공입니다. 여기까지 완료되면 Day 1 Ch.01부터 학습을 시작할 수 있습니다.
 
-### Step 3: 웹 대시보드 접속
+### Step 5: 웹 대시보드 접속
 
 | 서비스 | URL | 접속 방법 |
 |--------|-----|-----------|
@@ -161,21 +190,8 @@ grep "token:" ~/Downloads/lab-XX.yaml | awk '{print $2}'
 
 - 최신 웹 브라우저 (Chrome, Firefox, Edge 등)
 - 터미널 환경 (Windows: PowerShell 또는 WSL, macOS/Linux: 기본 터미널)
-- `kubectl` 설치 권장 (선택사항 — Headlamp으로 대체 가능)
-
-### kubectl 설치 (선택사항)
-
-```bash
-# Linux
-curl -LO "https://dl.k8s.io/release/v1.35.3/bin/linux/amd64/kubectl"
-chmod +x kubectl && sudo mv kubectl /usr/local/bin/
-
-# macOS
-brew install kubectl
-
-# Windows
-choco install kubernetes-cli
-```
+- `git` 설치 (교재 다운로드용, 없으면 ZIP 다운로드 가능)
+- `kubectl` 설치 권장 (선택사항 — Headlamp으로 대체 가능, 설치 방법은 위 "시작하기" 참고)
 
 ### 사전 지식
 
