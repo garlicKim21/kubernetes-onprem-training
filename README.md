@@ -99,39 +99,59 @@
 
 ## 수강생 접속 정보
 
-### 웹 대시보드
+### Step 1: kubeconfig 다운로드
 
-| 서비스 | URL | 비고 |
-|--------|-----|------|
-| **Headlamp** (클러스터 대시보드) | [https://headlamp.basphere.dev](https://headlamp.basphere.dev) | 읽기 전용 |
-| **Grafana** (모니터링) | [https://grafana.basphere.dev](https://grafana.basphere.dev) | 아래 로그인 정보 참조 |
-| **Hubble UI** (네트워크 관측) | [https://hubble.basphere.dev](https://hubble.basphere.dev) | Cilium 네트워크 플로우 |
-| **부하 테스트 엔드포인트** | [https://loadtest.basphere.dev](https://loadtest.basphere.dev) | Day 2 사용 |
+1. **[https://lab.basphere.dev](https://lab.basphere.dev)** 에 접속합니다
+2. 비밀번호를 입력합니다 (강사가 구두로 안내)
+3. 자신의 Lab 번호 버튼을 클릭하여 `kubeconfig.yaml` 파일을 다운로드합니다
+4. 다운로드한 파일에는 개인 네임스페이스(`lab-XX`)가 기본 설정되어 있습니다
 
-### Grafana 로그인 정보
-
-```
-사용자명: student
-비밀번호: k8s-training
-```
-
-### kubectl 접속
-
-API 서버 엔드포인트: `api.basphere.dev:6443`
-
-강사가 배포하는 kubeconfig 파일을 다운로드한 후 아래와 같이 설정합니다:
+### Step 2: kubectl 설정
 
 ```bash
-# kubeconfig 파일 저장
-mkdir -p ~/.kube
-cp student-kubeconfig.yaml ~/.kube/config
+# 다운로드한 kubeconfig 파일을 설정 (파일 경로는 다운로드 위치에 맞게 조정)
+
+# Windows (PowerShell)
+$env:KUBECONFIG = "$HOME\Downloads\lab-XX.yaml"
+
+# macOS / Linux
+export KUBECONFIG=~/Downloads/lab-XX.yaml
 
 # 접속 테스트
-kubectl cluster-info
 kubectl get nodes
+kubectl get pods -A
 ```
 
-> **참고:** 수강생 kubeconfig는 본인 네임스페이스(lab-XX)에서 Pod, Deployment, Service, ConfigMap, Secret, PVC, HPA, HTTPRoute를 생성/삭제할 수 있으며, 그 외 네임스페이스는 읽기 전용(view)입니다.
+> 정상적으로 9개 노드가 표시되면 접속 성공입니다.
+
+### Step 3: 웹 대시보드 접속
+
+| 서비스 | URL | 접속 방법 |
+|--------|-----|-----------|
+| **Lab Portal** (kubeconfig 다운로드) | [https://lab.basphere.dev](https://lab.basphere.dev) | 비밀번호 (강사 안내) |
+| **Grafana** (모니터링 대시보드) | [https://grafana.basphere.dev](https://grafana.basphere.dev) | 계정/비밀번호 (강사 안내) |
+| **Headlamp** (클러스터 대시보드) | [https://headlamp.basphere.dev](https://headlamp.basphere.dev) | kubeconfig 파일의 `token:` 값 |
+| **Hubble UI** (네트워크 관측) | [https://hubble.basphere.dev](https://hubble.basphere.dev) | 인증 불필요 |
+| **Load Generator** (부하 테스트) | [https://loadtest.basphere.dev](https://loadtest.basphere.dev) | Day 2에서 사용 |
+
+#### Headlamp 접속 방법
+
+Headlamp는 토큰 인증을 사용합니다. 다운로드한 kubeconfig 파일을 열어 `token:` 뒤의 값을 복사하세요:
+
+```bash
+# kubeconfig에서 토큰 추출
+grep "token:" ~/Downloads/lab-XX.yaml | awk '{print $2}'
+```
+
+이 토큰을 Headlamp 로그인 화면의 "Token" 입력란에 붙여넣으면 됩니다.
+
+### 수강생 권한 안내
+
+| 범위 | 권한 |
+|------|------|
+| **본인 네임스페이스** (`lab-XX`) | Pod, Deployment, Service, ConfigMap, Secret, PVC, HPA, HTTPRoute **생성/수정/삭제** 가능 |
+| **다른 네임스페이스** (kube-system, monitoring 등) | **조회만** 가능 |
+| **클러스터 레벨** | 노드, StorageClass, Gateway, Cilium 리소스 **조회** 가능 |
 
 ---
 

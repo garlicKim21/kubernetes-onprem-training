@@ -1,5 +1,21 @@
 # 수강생 접속 가이드
 
+## 0. kubeconfig 다운로드 (가장 먼저!)
+
+| 항목 | 값 |
+|------|-----|
+| **URL** | https://lab.basphere.dev |
+| **인증** | 비밀번호 (강사가 구두로 안내) |
+
+1. 브라우저에서 **https://lab.basphere.dev** 접속
+2. 비밀번호 입력 후 입장
+3. **자신의 Lab 번호** 버튼 클릭 → `lab-XX.yaml` 파일 다운로드
+4. 이 파일이 kubectl과 Headlamp에서 사용할 인증 정보입니다
+
+> 한 번 선택한 번호는 다른 사람이 사용할 수 없으므로, 강사의 안내에 따라 선택하세요.
+
+---
+
 ## 1. Headlamp (클러스터 대시보드)
 
 ### 접속 정보
@@ -7,23 +23,26 @@
 | 항목 | 값 |
 |------|-----|
 | **URL** | https://headlamp.basphere.dev |
-| **인증 방식** | Bearer Token |
+| **인증 방식** | Bearer Token (kubeconfig 파일에서 추출) |
 
 ### 접속 방법
 
 1. 웹 브라우저에서 **https://headlamp.basphere.dev** 접속
-2. 로그인 화면에서 **Token** 입력란에 강사가 제공한 토큰을 붙여넣기
-3. **Authenticate** 버튼 클릭
+2. 로그인 화면에서 **Token** 선택
+3. 다운로드한 `lab-XX.yaml` 파일을 열어 `token:` 값을 복사
+4. Token 입력란에 붙여넣고 **Authenticate** 클릭
 
-### 토큰 입력
+### 토큰 추출 방법
 
-강사가 배포한 토큰을 아래와 같이 입력합니다:
+```bash
+# macOS / Linux
+grep "token:" ~/Downloads/lab-XX.yaml | awk '{print $2}'
 
+# Windows PowerShell
+(Get-Content ~\Downloads\lab-XX.yaml | Select-String "token:").ToString().Split(" ")[5]
 ```
-eyJhbGciOiJSUzI1NiIs...  (강사가 제공하는 전체 토큰 문자열)
-```
 
-> **참고**: 수강생 토큰은 읽기 전용(view) 권한만 부여되어 있습니다. 리소스를 조회할 수 있지만 생성/수정/삭제는 불가능합니다.
+> **참고**: 수강생은 본인 네임스페이스(lab-XX)에서 리소스 생성/삭제가 가능하며, 다른 네임스페이스는 조회만 가능합니다.
 
 ### Headlamp 주요 기능
 
@@ -45,7 +64,6 @@ eyJhbGciOiJSUzI1NiIs...  (강사가 제공하는 전체 토큰 문자열)
 |------|-----|
 | **URL** | https://grafana.basphere.dev |
 | **수강생 계정** | 사용자명: `student` / 비밀번호: `k8s-training` |
-| **관리자 계정** | 사용자명: `admin` / 비밀번호: `Basphere2026!` |
 
 ### 접속 방법
 
@@ -166,14 +184,13 @@ kubectl get nodes --kubeconfig=/path/to/student-kubeconfig.yaml
 | 항목 | 값 |
 |------|-----|
 | **URL** | https://loadtest.basphere.dev |
-| **계정** | 사용자명: `admin` / 비밀번호: `Basphere2026!` |
+| **접근 방식** | 뷰어 모드 (로그인 불필요), 관리자 접근은 강사만 가능 |
 
 ### 사용 방법
 
 1. 웹 브라우저에서 **https://loadtest.basphere.dev** 접속
-2. `admin` / `Basphere2026!`으로 로그인
-3. CPU 또는 메모리 부하 생성 버튼 클릭
-4. `kubectl get hpa -n load-tester -w` 명령으로 오토스케일링 관찰
+2. 뷰어 모드로 실시간 메트릭 관찰 가능 (부하 제어는 강사만 가능)
+3. `kubectl get hpa -n load-tester -w` 명령으로 오토스케일링 관찰
 
 ---
 
