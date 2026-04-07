@@ -52,33 +52,35 @@
 
 ## 클러스터 아키텍처
 
-```mermaid
-graph TD
-    ROUTER["🌐 OPNsense Router<br/>ASN 65000 · 10.254.0.1<br/>BGP ↔ Cluster ASN 65100<br/>LB Pool: 172.16.200.0/24"]
-    VIP["Control Plane VIP<br/>10.254.0.10"]
+```
+                    ┌─────────────────────────────┐
+                    │     OPNsense Router          │
+                    │  ASN 65000 · 10.254.0.1      │
+                    │  BGP ↔ Cluster ASN 65100     │
+                    │  LB Pool: 172.16.200.0/24    │
+                    └──────────────┬───────────────┘
+                                   │
+                    ┌──────────────▼───────────────┐
+                    │  Control Plane VIP            │
+                    │  10.254.0.10 (API Server)     │
+                    └──┬──────────┬──────────┬─────┘
+                       │          │          │
+                  ┌────▼───┐ ┌───▼────┐ ┌───▼────┐
+                  │ ctrl-0 │ │ ctrl-1 │ │ ctrl-2 │
+                  │API,etcd│ │API,etcd│ │API,etcd│
+                  │Sched,CM│ │Sched,CM│ │Sched,CM│
+                  └────────┘ └────────┘ └────────┘
 
-    ROUTER --> VIP
-
-    subgraph CP["Control Plane (3 nodes)"]
-        ctrl0["ctrl-0<br/>API Server · etcd<br/>Scheduler · Ctrl Mgr"]
-        ctrl1["ctrl-1<br/>API Server · etcd<br/>Scheduler · Ctrl Mgr"]
-        ctrl2["ctrl-2<br/>API Server · etcd<br/>Scheduler · Ctrl Mgr"]
-    end
-
-    VIP --> ctrl0
-    VIP --> ctrl1
-    VIP --> ctrl2
-
-    subgraph WK["Worker Nodes (6 nodes)"]
-        wrk0["wrk-0<br/>kubelet · Cilium · containerd"]
-        wrk1["wrk-1<br/>kubelet · Cilium · containerd"]
-        wrk2["wrk-2<br/>kubelet · Cilium · containerd"]
-        wrk3["wrk-3<br/>kubelet · Cilium · containerd"]
-        wrk4["wrk-4<br/>kubelet · Cilium · containerd"]
-        wrk5["wrk-5<br/>kubelet · Cilium · containerd"]
-    end
-
-    CP --> WK
+                  ┌────────┐ ┌────────┐ ┌────────┐
+                  │ wrk-0  │ │ wrk-1  │ │ wrk-2  │
+                  │kubelet │ │kubelet │ │kubelet │
+                  │Cilium  │ │Cilium  │ │Cilium  │
+                  └────────┘ └────────┘ └────────┘
+                  ┌────────┐ ┌────────┐ ┌────────┐
+                  │ wrk-3  │ │ wrk-4  │ │ wrk-5  │
+                  │kubelet │ │kubelet │ │kubelet │
+                  │Cilium  │ │Cilium  │ │Cilium  │
+                  └────────┘ └────────┘ └────────┘
 ```
 
 ---
