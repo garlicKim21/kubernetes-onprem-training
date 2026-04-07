@@ -45,7 +45,7 @@
 
 ---
 
-> 💻 **학생 실습** — 이 섹션은 각자의 lab 네임스페이스에서 직접 실습합니다.
+> 💻 **수강생 실습** — 이 섹션은 각자의 lab 네임스페이스에서 직접 실습합니다.
 
 ## 3. emptyDir: Pod 내 공유 스토리지
 
@@ -129,6 +129,10 @@ cat examples/hostpath-pod.yaml
 ---
 
 ## 5. PersistentVolume (PV): 클러스터 수준의 스토리지
+
+### 왜 PV가 필요한가?
+
+emptyDir은 Pod가 삭제되면 데이터가 사라지고, hostPath는 특정 노드에 종속됩니다. 데이터베이스처럼 **Pod가 재시작되거나 다른 노드로 이동해도 데이터가 유지**되어야 하는 경우에는 외부 스토리지(NFS, 디스크 등)를 사용해야 합니다. PV/PVC는 이 외부 스토리지를 쿠버네티스 안에서 관리하는 표준 방법입니다.
 
 ### 개념
 
@@ -230,7 +234,7 @@ PVC가 삭제된 후 PV를 어떻게 처리할지 결정합니다.
 
 ---
 
-> 💻 **학생 실습** — 이 섹션은 각자의 lab 네임스페이스에서 직접 실습합니다.
+> 💻 **수강생 실습** — 이 섹션은 각자의 lab 네임스페이스에서 직접 실습합니다.
 
 ## 9. 데모: PV/PVC 생성 및 바인딩 확인
 
@@ -281,7 +285,50 @@ demo-pv   1Gi        RWO            Retain           Bound    default/demo-pvc  
 
 > STATUS가 `Available` → `Bound`로 변경되었고, CLAIM 열에 바인딩된 PVC가 표시됩니다.
 
-### 9.4 상세 정보 확인
+### 9.4 PVC를 사용하는 Pod 생성 — 데이터 쓰기
+
+PV/PVC가 바인딩되었으므로, 이제 Pod에서 PVC를 마운트하여 실제로 데이터를 저장해 봅니다.
+
+```bash
+# PVC를 마운트하는 Pod 생성
+kubectl run pvc-writer --image=busybox:1.37 --restart=Never \
+  --overrides='{
+    "spec": {
+      "containers": [{
+        "name": "pvc-writer",
+        "image": "busybox:1.37",
+        "command": ["sh", "-c", "echo 쿠버네티스 PV 테스트 데이터입니다 > /data/test.txt && echo 작성 완료 && sleep 3600"],
+        "volumeMounts": [{"name": "my-vol", "mountPath": "/data"}]
+      }],
+      "volumes": [{"name": "my-vol", "persistentVolumeClaim": {"claimName": "demo-pvc"}}]
+    }
+  }'
+```
+
+```bash
+# Pod가 Running 상태인지 확인
+kubectl get pod pvc-writer
+```
+
+**예상 출력:**
+```
+NAME         READY   STATUS    RESTARTS   AGE
+pvc-writer   1/1     Running   0          10s
+```
+
+```bash
+# Pod 안에서 저장된 데이터 확인
+kubectl exec pvc-writer -- cat /data/test.txt
+```
+
+**예상 출력:**
+```
+쿠버네티스 PV 테스트 데이터입니다
+```
+
+> PVC를 통해 PV에 데이터가 저장되었습니다. 이 데이터는 Pod가 삭제되어도 PV에 남아 있습니다.
+
+### 9.5 상세 정보 확인
 
 ```bash
 # PV 상세 정보
@@ -291,9 +338,10 @@ kubectl describe pv demo-pv
 kubectl describe pvc demo-pvc
 ```
 
-### 9.5 정리
+### 9.6 정리
 
 ```bash
+kubectl delete pod pvc-writer
 kubectl delete pvc demo-pvc
 kubectl delete pv demo-pv
 ```

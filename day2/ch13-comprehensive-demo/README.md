@@ -1,6 +1,6 @@
 # Ch.13 종합 데모: 배포부터 오토스케일링까지
 
-> 🎓 **강사 데모** — 이 섹션은 강사가 시연합니다. 학생들은 Headlamp이나 Grafana에서 결과를 확인할 수 있습니다.
+> 🎓 **강사 데모** — 이 섹션은 강사가 시연합니다. 수강생들은 Headlamp이나 Grafana에서 결과를 확인할 수 있습니다.
 
 ## 학습 목표
 
@@ -212,15 +212,16 @@ kubectl get pods -n demo -l app=nginx-demo -w
 
 **터미널 3: 부하 생성**
 
-간단한 부하를 생성하기 위해 클러스터 내에서 반복 요청을 보냅니다:
+간단한 부하를 생성하기 위해 클러스터 내에서 반복 요청을 보냅니다. 여러 동시 요청을 보내야 CPU 부하가 발생합니다:
 
 ```bash
-# 부하 생성 Pod 실행
+# 부하 생성 Pod 실행 (여러 프로세스로 동시 요청)
 kubectl run -n demo load-generator --image=busybox:1.37 --restart=Never -- \
-  /bin/sh -c "while true; do wget -q -O- http://nginx-demo-svc.demo.svc.cluster.local; done"
+  /bin/sh -c "while true; do wget -q -O- http://nginx-demo-svc.demo.svc.cluster.local > /dev/null 2>&1; done"
 ```
 
-또는 부하 테스트 도구(loadtest.basphere.dev)를 활용할 수 있습니다.
+> **팁**: 부하가 충분하지 않으면 동일한 명령으로 load-generator-2, load-generator-3 등 추가 Pod를 생성하여 부하를 높일 수 있습니다.
+> 또는 부하 테스트 도구(loadtest.basphere.dev)를 활용할 수 있습니다.
 
 **터미널 1 관찰 (HPA):**
 ```
@@ -254,18 +255,16 @@ nginx-demo-hpa   Deployment/nginx-demo   42%/50%   2         10        5        
 모든 데모가 끝나면 리소스를 정리합니다.
 
 ```bash
-# 부하 생성기 삭제
-kubectl delete pod load-generator -n demo --ignore-not-found
-
-# 네임스페이스 삭제 (모든 리소스 함께 삭제)
+# 네임스페이스 삭제 (모든 리소스 함께 삭제 — load-generator Pod 포함)
 kubectl delete namespace demo
 ```
 
 **예상 출력:**
 ```
-pod "load-generator" deleted
 namespace "demo" deleted
 ```
+
+> **참고**: 네임스페이스 삭제 시 해당 네임스페이스의 모든 리소스(Deployment, Service, HPA, HTTPRoute, Pod 등)가 함께 삭제됩니다. 삭제에 수십 초 정도 소요될 수 있습니다.
 
 **확인:**
 ```bash

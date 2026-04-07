@@ -137,7 +137,7 @@ csi.vsphere.vmware.com   true             false            false             <un
 
 ---
 
-> 💻 **학생 실습** — 이 섹션은 각자의 lab 네임스페이스에서 직접 실습합니다.
+> 💻 **수강생 실습** — 이 섹션은 각자의 lab 네임스페이스에서 직접 실습합니다.
 
 ## 5. 데모: 동적 프로비저닝
 
@@ -161,10 +161,27 @@ dynamic-demo-pvc   Pending                                      vsphere-csi    5
 
 > STATUS가 `Pending`인 이유: `volumeBindingMode: WaitForFirstConsumer`이므로 Pod가 이 PVC를 사용할 때까지 대기합니다.
 
-### 5.2 PVC를 사용하는 Pod 생성 (데모 설명)
+### 5.2 PVC를 사용하는 Pod 생성
 
-> **참고**: 실제로 PVC를 사용하는 Pod를 생성하면 vSphere에 VMDK가 생성됩니다.
-> 다음 챕터(Ch.10 DB on K8s)에서 StatefulSet과 함께 실제 동적 프로비저닝을 실습합니다.
+PVC를 사용하는 Pod를 생성하면 `WaitForFirstConsumer` 모드에 의해 비로소 PV가 프로비저닝됩니다.
+
+```bash
+# PVC를 마운트하는 Pod 생성
+kubectl run dynamic-pvc-test --image=busybox:1.37 --restart=Never \
+  --overrides='{
+    "spec": {
+      "containers": [{
+        "name": "test",
+        "image": "busybox:1.37",
+        "command": ["sh", "-c", "echo 동적 프로비저닝 테스트 > /data/test.txt && cat /data/test.txt && sleep 3600"],
+        "volumeMounts": [{"name": "vol", "mountPath": "/data"}]
+      }],
+      "volumes": [{"name": "vol", "persistentVolumeClaim": {"claimName": "dynamic-demo-pvc"}}]
+    }
+  }'
+```
+
+> **참고**: Pod 생성 후 vSphere CSI가 VMDK를 생성하므로 10~30초 정도 소요될 수 있습니다.
 
 Pod가 스케줄링되면:
 
@@ -204,6 +221,7 @@ vSphere Client에서 확인하면:
 ### 5.5 정리
 
 ```bash
+kubectl delete pod dynamic-pvc-test 2>/dev/null
 kubectl delete pvc dynamic-demo-pvc
 # PVC 삭제 시 reclaimPolicy가 Delete이므로 PV와 VMDK도 자동 삭제됨
 ```

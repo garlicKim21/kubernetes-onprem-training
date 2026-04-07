@@ -117,6 +117,9 @@ ctrl-2   Ready    control-plane   30d   v1.35.3
 wrk-0    Ready    <none>          30d   v1.35.3
 wrk-1    Ready    <none>          30d   v1.35.3
 wrk-2    Ready    <none>          30d   v1.35.3
+wrk-3    Ready    <none>          30d   v1.35.3
+wrk-4    Ready    <none>          30d   v1.35.3
+wrk-5    Ready    <none>          30d   v1.35.3
 ```
 
 ### kubeconfig를 기본 경로에 두지 않는 경우
@@ -132,7 +135,18 @@ kubectl get nodes --kubeconfig=/path/to/student-kubeconfig.yaml
 
 ### 수강생 kubectl 권한
 
-수강생 계정은 **view** ClusterRole이 바인딩되어 있어 다음과 같은 작업만 가능합니다:
+수강생 계정은 **본인 네임스페이스(lab-XX)에서는 리소스를 생성/수정/삭제**할 수 있으며, **그 외 네임스페이스는 읽기 전용(view)**입니다.
+
+**본인 네임스페이스 (lab-XX) — 읽기/쓰기 가능:**
+
+| 허용 작업 | 대상 리소스 |
+|-----------|-------------|
+| `kubectl apply -f` | Pod, Deployment, Service, ConfigMap, Secret, PVC, HPA, HTTPRoute |
+| `kubectl create` | 위와 동일 |
+| `kubectl delete` | 위와 동일 |
+| `kubectl get/describe/logs` | 모든 리소스 |
+
+**다른 네임스페이스 — 읽기 전용:**
 
 | 허용 (읽기) | 불가 (쓰기) |
 |-------------|-------------|

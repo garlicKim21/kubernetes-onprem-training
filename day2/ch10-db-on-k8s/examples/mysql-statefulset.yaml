@@ -74,6 +74,7 @@ spec:
                 - ping
                 - -h
                 - localhost
+                - -uroot
             initialDelaySeconds: 30
             periodSeconds: 10
 

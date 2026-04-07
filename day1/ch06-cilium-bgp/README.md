@@ -1,6 +1,6 @@
 # Chapter 06 — Cilium CNI와 BGP 기반 LoadBalancer
 
-> 🎓 **강사 데모** — 이 섹션은 강사가 시연합니다. 학생들은 Headlamp이나 Grafana에서 결과를 확인할 수 있습니다.
+> 🎓 **강사 데모** — 이 섹션은 강사가 시연합니다. 수강생들은 Headlamp이나 Grafana에서 결과를 확인할 수 있습니다.
 
 ## 학습 목표
 

@@ -78,11 +78,64 @@ spec:
 
 ---
 
-## 3. metrics-server 확인
+## 3. HPA 예시 YAML 확인
+
+교육 자료에 포함된 HPA 예시 파일을 먼저 살펴봅니다. 이 파일은 HPA의 전체 구조를 이해하는 참고용입니다.
+
+```bash
+cat examples/hpa-example.yaml
+```
+
+**examples/hpa-example.yaml:**
+
+```yaml
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: example-hpa
+  namespace: default
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: example-app         # 스케일링 대상 Deployment
+  minReplicas: 1              # 최소 Pod 수
+  maxReplicas: 10             # 최대 Pod 수
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 50   # 평균 CPU 사용률 50% 목표
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 0
+      policies:
+        - type: Percent
+          value: 100
+          periodSeconds: 15
+        - type: Pods
+          value: 4
+          periodSeconds: 15
+      selectPolicy: Max
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Percent
+          value: 10
+          periodSeconds: 60
+```
+
+> 이 파일의 각 필드는 아래 "Scaling Policies" 섹션에서 자세히 설명합니다. 실제 클러스터의 HPA는 `load-tester` 네임스페이스에 이미 배포되어 있으므로, 이 파일을 직접 적용하지는 않습니다.
+
+---
+
+## 4. metrics-server 확인
 
 HPA가 동작하려면 **metrics-server**가 설치되어 있어야 합니다.
 
-### 3.1 metrics-server 동작 확인
+### 4.1 metrics-server 동작 확인
 
 ```bash
 kubectl get deployment metrics-server -n kube-system
@@ -94,7 +147,7 @@ NAME             READY   UP-TO-DATE   AVAILABLE   AGE
 metrics-server   1/1     1            1           30d
 ```
 
-### 3.2 노드 리소스 사용량 확인
+### 4.2 노드 리소스 사용량 확인
 
 ```bash
 kubectl top nodes
@@ -114,7 +167,7 @@ wrk-4    390m         9%     3700Mi          46%
 wrk-5    430m         10%    3950Mi          49%
 ```
 
-### 3.3 Pod 리소스 사용량 확인
+### 4.3 Pod 리소스 사용량 확인
 
 ```bash
 kubectl top pods -n load-tester
@@ -135,7 +188,7 @@ network-generator-xxxxxxxxxx-yyyyy   1m           4Mi
 
 ---
 
-## 4. 현재 클러스터의 HPA 상태 확인
+## 5. 현재 클러스터의 HPA 상태 확인
 
 ```bash
 kubectl get deploy,hpa -n load-tester
@@ -160,18 +213,18 @@ horizontalpodautoscaler.autoscaling/memory-generator-hpa   Deployment/memory-gen
 
 ---
 
-> 🎓 **강사 데모** — 이 섹션은 강사가 시연합니다. 학생들은 Headlamp이나 Grafana에서 결과를 확인할 수 있습니다.
+> 🎓 **강사 데모** — 이 섹션은 강사가 시연합니다. 수강생들은 Headlamp이나 Grafana에서 결과를 확인할 수 있습니다.
 
-## 5. 데모: 부하 테스트와 오토스케일링
+## 6. 데모: 부하 테스트와 오토스케일링
 
-### 5.1 부하 테스트 UI 접속
+### 6.1 부하 테스트 UI 접속
 
 1. 웹 브라우저에서 **https://loadtest.basphere.dev** 접속
 2. 로그인:
    - 사용자명: `admin`
    - 비밀번호: `Basphere2026!`
 
-### 5.2 현재 상태 확인
+### 6.2 현재 상태 확인
 
 부하를 주기 전에 현재 상태를 확인합니다.
 
@@ -185,12 +238,12 @@ kubectl get hpa -n load-tester -w
 kubectl get pods -n load-tester -l app=cpu-generator -w
 ```
 
-### 5.3 CPU 부하 시작
+### 6.3 CPU 부하 시작
 
 1. 부하 테스트 UI에서 **CPU Load** 버튼을 클릭하여 부하를 시작합니다
 2. 터미널에서 변화를 관찰합니다
 
-### 5.4 HPA 동작 관찰
+### 6.4 HPA 동작 관찰
 
 **터미널 1 (HPA 모니터링) 예상 변화:**
 
@@ -218,7 +271,7 @@ cpu-generator-xxxxxxxxxx-zzzzz   0/1     Pending   0          0s
 cpu-generator-xxxxxxxxxx-zzzzz   1/1     Running   0          3s
 ```
 
-### 5.5 Grafana에서 관찰
+### 6.5 Grafana에서 관찰
 
 1. 웹 브라우저에서 **https://grafana.basphere.dev** 접속
 2. 로그인: `student` / `k8s-training`
@@ -230,7 +283,7 @@ cpu-generator-xxxxxxxxxx-zzzzz   1/1     Running   0          3s
    - Pod 수가 증가하는 것을 확인
    - 부하가 분산되면서 개별 Pod의 CPU 사용률이 감소
 
-### 5.6 부하 중지 후 스케일 다운 관찰
+### 6.6 부하 중지 후 스케일 다운 관찰
 
 1. 부하 테스트 UI에서 **Stop** 버튼을 클릭하여 부하를 중지합니다
 2. 터미널에서 변화를 관찰합니다
@@ -253,7 +306,7 @@ cpu-generator-hpa   Deployment/cpu-generator   cpu: 1%/50%    2         10      
 
 ---
 
-## 6. Scaling Policies (스케일링 정책)
+## 7. Scaling Policies (스케일링 정책)
 
 HPA v2에서는 스케일링 동작을 세밀하게 제어할 수 있습니다.
 

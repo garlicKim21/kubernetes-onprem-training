@@ -151,7 +151,7 @@ Address: 10.244.x.x    ← mysql-0 Pod의 IP
 
 ---
 
-> 🎓 **강사 데모** — 이 섹션은 강사가 시연합니다. 학생들은 Headlamp이나 Grafana에서 결과를 확인할 수 있습니다.
+> 🎓 **강사 데모** — 이 섹션은 강사가 시연합니다. 수강생들은 Headlamp이나 Grafana에서 결과를 확인할 수 있습니다.
 
 ## 2. MySQL on Kubernetes: 단계별 실습
 
