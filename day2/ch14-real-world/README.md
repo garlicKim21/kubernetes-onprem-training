@@ -104,20 +104,25 @@ RBAC는 **누가(Subject) 무엇을(Resource) 어떻게(Verb) 할 수 있는지*
 
 ### RBAC 리소스
 
-```
-  ┌─────────────────────────────────────────────────────┐
-  │                    RBAC 모델                         │
-  │                                                      │
-  │  Subject(주체)      Binding(연결)      Role(권한)    │
-  │  ┌──────────┐      ┌──────────┐      ┌──────────┐  │
-  │  │ User     │      │ Role     │      │ Role     │  │
-  │  │ Group    │◀────▶│ Binding  │◀────▶│          │  │
-  │  │ Service  │      │          │      │ 어떤 리소스│  │
-  │  │ Account  │      └──────────┘      │ 에 대해   │  │
-  │  └──────────┘                        │ 어떤 동작을│  │
-  │                                      │ 허용      │  │
-  │                                      └──────────┘  │
-  └─────────────────────────────────────────────────────┘
+```mermaid
+graph LR
+    subgraph rbac["RBAC 모델"]
+        subgraph subject["Subject (주체)"]
+            user["User"]
+            group["Group"]
+            sa["Service Account"]
+        end
+        subgraph binding["Binding (연결)"]
+            rb["RoleBinding"]
+        end
+        subgraph role["Role (권한)"]
+            r["Role<br/>어떤 리소스에 대해<br/>어떤 동작을 허용"]
+        end
+        user --- rb
+        group --- rb
+        sa --- rb
+        rb --- r
+    end
 ```
 
 | 리소스 | 범위 | 설명 |
@@ -168,17 +173,11 @@ roleRef:
 
 GitOps는 **Git 리포지토리를 "단일 진실의 원천(Single Source of Truth)"으로 사용**하여 쿠버네티스 클러스터의 상태를 관리하는 운영 방식입니다.
 
-```
-  개발자                    Git Repository               쿠버네티스 클러스터
-  ┌────┐    PR/Merge       ┌──────────────┐    Sync      ┌──────────────┐
-  │    │──────────────────▶│ deployment.yaml│────────────▶│ Deployment   │
-  │    │                   │ service.yaml  │   자동 배포   │ Service      │
-  │    │                   │ hpa.yaml      │             │ HPA          │
-  └────┘                   └──────────────┘             └──────────────┘
-                                  ▲                            │
-                                  │        상태 비교           │
-                                  └────────────────────────────┘
-                                     (Desired vs Actual)
+```mermaid
+graph LR
+    DEV["👨‍💻 개발자"] -- "PR / Merge" --> GIT["📁 Git Repository<br/>deployment.yaml<br/>service.yaml<br/>hpa.yaml"]
+    GIT -- "자동 Sync" --> K8S["☸️ 쿠버네티스 클러스터<br/>Deployment<br/>Service<br/>HPA"]
+    K8S -- "상태 비교<br/>(Desired vs Actual)" --> GIT
 ```
 
 ### 주요 GitOps 도구

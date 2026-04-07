@@ -14,16 +14,16 @@
 
 이번 데모에서는 다음과 같은 **엔드투엔드 시나리오**를 진행합니다:
 
-```
-  1. Namespace 생성
-  2. ConfigMap (커스텀 index.html)
-  3. Deployment (nginx 3 replicas)
-  4. Service (ClusterIP)
-  5. HTTPRoute (Gateway API로 외부 노출)
-  6. HPA (CPU 50% 기준 오토스케일링)
-  7. 부하 생성 → 스케일 아웃 관찰
-  8. Grafana에서 모니터링
-  9. 정리
+```mermaid
+graph TD
+    S1["1. Namespace 생성"] --> S2["2. ConfigMap (커스텀 index.html)"]
+    S2 --> S3["3. Deployment (nginx 3 replicas)"]
+    S3 --> S4["4. Service (ClusterIP)"]
+    S4 --> S5["5. HTTPRoute (Gateway API로 외부 노출)"]
+    S5 --> S6["6. HPA (CPU 50% 기준 오토스케일링)"]
+    S6 --> S7["7. 부하 생성 → 스케일 아웃 관찰"]
+    S7 --> S8["8. Grafana에서 모니터링"]
+    S8 --> S9["9. 정리"]
 ```
 
 ---
@@ -280,29 +280,17 @@ No resources found in demo namespace.
 
 ## 전체 아키텍처 요약
 
+```mermaid
+graph TD
+    internet["인터넷/클라이언트"] --> gateway["<b>Gateway</b><br/>Cilium Gateway API"]
+    gateway -- "HTTPRoute<br/>(demo.basphere.dev)" --> svc["<b>Service</b> (ClusterIP)<br/>nginx-demo"]
+    svc -- "로드밸런싱" --> pod1["Pod (nginx)"]
+    svc --> pod2["Pod (nginx)"]
+    svc --> pod3["Pod (nginx)"]
+    svc -. "HPA가 자동 조절" .-> podN["Pod (nginx) ..."]
 ```
-  인터넷/클라이언트
-       │
-       ▼
-  ┌──────────────┐
-  │ Gateway      │  ← Cilium Gateway API
-  │              │
-  └──────┬───────┘
-         │ HTTPRoute (demo.basphere.dev)
-         ▼
-  ┌──────────────┐
-  │ Service      │  ← ClusterIP
-  │ nginx-demo   │
-  └──────┬───────┘
-         │ 로드밸런싱
-    ┌────┼────┐────── ... ──┐
-    ▼    ▼    ▼              ▼
-  ┌───┐┌───┐┌───┐       ┌───┐
-  │Pod││Pod││Pod│  ...  │Pod│  ← HPA가 자동 조절
-  └───┘└───┘└───┘       └───┘
-   nginx  nginx  nginx     nginx
-   (ConfigMap으로 커스텀 HTML 제공)
-```
+
+> 모든 Pod는 ConfigMap으로 커스텀 HTML을 제공합니다.
 
 ---
 

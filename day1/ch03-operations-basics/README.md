@@ -434,23 +434,11 @@ spec:
 
 ### Probe 동작 시나리오
 
-```
-  Pod 시작
-     │
-     ▼
-  ┌──────────────────────┐
-  │ Startup Probe 시작    │  ← 이 기간 동안 Liveness/Readiness 비활성
-  │ 성공할 때까지 반복      │
-  └──────────┬───────────┘
-             │ 성공
-             ▼
-  ┌──────────────────────┐  ┌──────────────────────┐
-  │ Liveness Probe       │  │ Readiness Probe      │
-  │ 주기적으로 실행        │  │ 주기적으로 실행        │
-  │                      │  │                      │
-  │ 실패 → 컨테이너 재시작 │  │ 실패 → 트래픽 차단    │
-  │ 성공 → 아무 일 없음    │  │ 성공 → 트래픽 허용    │
-  └──────────────────────┘  └──────────────────────┘
+```mermaid
+graph TD
+    start["Pod 시작"] --> startup["<b>Startup Probe 시작</b><br/>성공할 때까지 반복<br/><i>이 기간 동안 Liveness/Readiness 비활성</i>"]
+    startup -- "성공" --> liveness["<b>Liveness Probe</b><br/>주기적으로 실행<br/>실패 → 컨테이너 재시작<br/>성공 → 아무 일 없음"]
+    startup -- "성공" --> readiness["<b>Readiness Probe</b><br/>주기적으로 실행<br/>실패 → 트래픽 차단<br/>성공 → 트래픽 허용"]
 ```
 
 ### Probe 실패 관찰

@@ -30,28 +30,16 @@ Deployment는 **상태가 없는(Stateless)** 애플리케이션에 적합합니
 
 ### StatefulSet 구성 요소
 
-```
-  ┌─────────────────────────────────────────────────┐
-  │                  StatefulSet                      │
-  │                                                   │
-  │  ┌──────────┐  ┌──────────┐  ┌──────────┐       │
-  │  │ mysql-0  │  │ mysql-1  │  │ mysql-2  │       │
-  │  │          │  │          │  │          │       │
-  │  │ PVC-0    │  │ PVC-1    │  │ PVC-2    │       │
-  │  └────┬─────┘  └────┬─────┘  └────┬─────┘       │
-  │       │              │              │              │
-  │  ┌────┴─────┐  ┌────┴─────┐  ┌────┴─────┐       │
-  │  │  PV-0    │  │  PV-1    │  │  PV-2    │       │
-  │  │ (VMDK)   │  │ (VMDK)   │  │ (VMDK)   │       │
-  │  └──────────┘  └──────────┘  └──────────┘       │
-  └─────────────────────────────────────────────────┘
-                        │
-                ┌───────┴───────┐
-                │ Headless      │
-                │ Service       │
-                │ (clusterIP:   │
-                │  None)        │
-                └───────────────┘
+```mermaid
+graph TD
+    subgraph sts["StatefulSet"]
+        m0["<b>mysql-0</b><br/>PVC-0"] --> pv0["PV-0 (VMDK)"]
+        m1["<b>mysql-1</b><br/>PVC-1"] --> pv1["PV-1 (VMDK)"]
+        m2["<b>mysql-2</b><br/>PVC-2"] --> pv2["PV-2 (VMDK)"]
+    end
+    headless["<b>Headless Service</b><br/>(clusterIP: None)"] --> m0
+    headless --> m1
+    headless --> m2
 ```
 
 **핵심 구성 요소:**
@@ -66,29 +54,22 @@ Deployment는 **상태가 없는(Stateless)** 애플리케이션에 적합합니
 
 일반 Service는 **ClusterIP(가상 IP)**를 할당받아 로드밸런싱합니다:
 
+```mermaid
+graph TD
+    client["Client<br/>→ 10.96.100.50"]
+    client -- "랜덤 분배<br/>(가상 IP, 로드밸런싱)" --> podA["Pod-A"]
+    client --> podB["Pod-B"]
+    client --> podC["Pod-C"]
 ```
-일반 Service (ClusterIP: 10.96.100.50)
-┌──────────────────┐
-│  Client          │
-│  → 10.96.100.50  │  ← 가상 IP (kube-proxy/Cilium이 로드밸런싱)
-└────────┬─────────┘
-         │ (랜덤 분배)
-    ┌────┼────┐
-    ▼    ▼    ▼
-  Pod-A Pod-B Pod-C   ← 어떤 Pod로 갈지 모름
-```
+
+> 일반 Service: ClusterIP(10.96.100.50) → 어떤 Pod로 갈지 모름
 
 Headless Service는 **ClusterIP가 없습니다** (`clusterIP: None`):
 
-```
-Headless Service (ClusterIP: None)
-┌──────────────────────────────────────────────┐
-│  DNS 쿼리: mysql-svc.db-demo.svc.cluster.local  │
-│  → Pod IP 직접 반환: 10.244.1.5                  │
-│                                                    │
-│  DNS 쿼리: mysql-0.mysql-svc.db-demo.svc.cluster.local │
-│  → 특정 Pod IP: 10.244.1.5 (항상 mysql-0으로)       │
-└──────────────────────────────────────────────┘
+```mermaid
+graph TD
+    dns1["DNS 쿼리:<br/>mysql-svc.db-demo.svc.cluster.local"] -- "Pod IP 직접 반환" --> ip1["10.244.1.5"]
+    dns2["DNS 쿼리:<br/>mysql-0.mysql-svc.db-demo.svc.cluster.local"] -- "특정 Pod IP<br/>(항상 mysql-0으로)" --> ip2["10.244.1.5"]
 ```
 
 ### Headless Service가 필요한 이유

@@ -52,47 +52,24 @@
 
 ## 클러스터 아키텍처
 
-```
-                        ┌──────────────────────────────────────────────────────────┐
-                        │                      OPNsense Router                     │
-                        │                  ASN 65000 · 10.254.0.1                  │
-                        │                                                          │
-                        │   BGP Peering ←→ Cluster ASN 65100                       │
-                        │   LB IP Pool: 172.16.200.0/24                            │
-                        └────────────┬────────────────────────────┬────────────────┘
-                                     │                            │
-                    ─────────────────┴────────────────────────────┴─────────────────
-                    │          Control Plane VIP: 10.254.0.10 (API Server)         │
-                    ────────────────────────────────────────────────────────────────
-                         │                    │                    │
-                  ┌──────┴──────┐      ┌──────┴──────┐      ┌──────┴──────┐
-                  │   ctrl-0    │      │   ctrl-1    │      │   ctrl-2    │
-                  │ Control     │      │ Control     │      │ Control     │
-                  │ Plane       │      │ Plane       │      │ Plane       │
-                  │             │      │             │      │             │
-                  │ • API Server│      │ • API Server│      │ • API Server│
-                  │ • etcd      │      │ • etcd      │      │ • etcd      │
-                  │ • Scheduler │      │ • Scheduler │      │ • Scheduler │
-                  │ • Ctrl Mgr  │      │ • Ctrl Mgr  │      │ • Ctrl Mgr  │
-                  └─────────────┘      └─────────────┘      └─────────────┘
+```mermaid
+graph TD
+    subgraph Router["OPNsense Router<br/>ASN 65000 · 10.254.0.1<br/>BGP Peering ↔ Cluster ASN 65100<br/>LB IP Pool: 172.16.200.0/24"]
+    end
 
-                  ┌──────┴──────┐      ┌──────┴──────┐      ┌──────┴──────┐
-                  │   wrk-0     │      │   wrk-1     │      │   wrk-2     │
-                  │ Worker      │      │ Worker      │      │ Worker      │
-                  │             │      │             │      │             │
-                  │ • kubelet   │      │ • kubelet   │      │ • kubelet   │
-                  │ • Cilium    │      │ • Cilium    │      │ • Cilium    │
-                  │ • containerd│      │ • containerd│      │ • containerd│
-                  └─────────────┘      └─────────────┘      └─────────────┘
+    Router --- VIP["Control Plane VIP: 10.254.0.10<br/>(API Server)"]
 
-                  ┌─────────────┐      ┌─────────────┐      ┌─────────────┐
-                  │   wrk-3     │      │   wrk-4     │      │   wrk-5     │
-                  │ Worker      │      │ Worker      │      │ Worker      │
-                  │             │      │             │      │             │
-                  │ • kubelet   │      │ • kubelet   │      │ • kubelet   │
-                  │ • Cilium    │      │ • Cilium    │      │ • Cilium    │
-                  │ • containerd│      │ • containerd│      │ • containerd│
-                  └─────────────┘      └─────────────┘      └─────────────┘
+    VIP --- ctrl0["<b>ctrl-0</b><br/>Control Plane<br/>• API Server<br/>• etcd<br/>• Scheduler<br/>• Ctrl Mgr"]
+    VIP --- ctrl1["<b>ctrl-1</b><br/>Control Plane<br/>• API Server<br/>• etcd<br/>• Scheduler<br/>• Ctrl Mgr"]
+    VIP --- ctrl2["<b>ctrl-2</b><br/>Control Plane<br/>• API Server<br/>• etcd<br/>• Scheduler<br/>• Ctrl Mgr"]
+
+    ctrl0 --- wrk0["<b>wrk-0</b> Worker<br/>• kubelet<br/>• Cilium<br/>• containerd"]
+    ctrl1 --- wrk1["<b>wrk-1</b> Worker<br/>• kubelet<br/>• Cilium<br/>• containerd"]
+    ctrl2 --- wrk2["<b>wrk-2</b> Worker<br/>• kubelet<br/>• Cilium<br/>• containerd"]
+
+    wrk3["<b>wrk-3</b> Worker<br/>• kubelet<br/>• Cilium<br/>• containerd"]
+    wrk4["<b>wrk-4</b> Worker<br/>• kubelet<br/>• Cilium<br/>• containerd"]
+    wrk5["<b>wrk-5</b> Worker<br/>• kubelet<br/>• Cilium<br/>• containerd"]
 ```
 
 ---

@@ -203,38 +203,19 @@ helm install cilium cilium/cilium --version 1.19.2 \
 
 ## 7. kubeadm 전체 흐름 요약
 
-```
-  ┌──────────────────────────────────────────────────────────────┐
-  │                    사전 준비 (모든 노드)                       │
-  │  1. 스왑 비활성화                                             │
-  │  2. 커널 모듈 및 파라미터 설정                                 │
-  │  3. containerd 설치 및 설정                                   │
-  │  4. kubeadm, kubelet, kubectl 설치                           │
-  └──────────────────────────┬───────────────────────────────────┘
-                             │
-                             ▼
-  ┌──────────────────────────────────────────────────────────────┐
-  │           kubeadm init (첫 번째 Control Plane)                │
-  │  • 인증서 생성                                                │
-  │  • Static Pod 매니페스트 생성                                  │
-  │  • etcd 부트스트래핑                                          │
-  │  • 기본 addon 설치                                            │
-  └──────────────────────────┬───────────────────────────────────┘
-                             │
-                  ┌──────────┴──────────┐
-                  ▼                     ▼
-  ┌──────────────────────┐  ┌──────────────────────┐
-  │ kubeadm join         │  │ kubeadm join         │
-  │ --control-plane      │  │ (Worker 노드)         │
-  │ (추가 CP 노드)        │  │                      │
-  └──────────┬───────────┘  └──────────┬───────────┘
-             │                         │
-             └────────────┬────────────┘
-                          ▼
-  ┌──────────────────────────────────────────────────────────────┐
-  │                    CNI 설치 (Cilium)                          │
-  │             모든 노드가 Ready 상태로 전환                       │
-  └──────────────────────────────────────────────────────────────┘
+```mermaid
+graph TD
+    prep["<b>사전 준비 (모든 노드)</b><br/>1. 스왑 비활성화<br/>2. 커널 모듈 및 파라미터 설정<br/>3. containerd 설치 및 설정<br/>4. kubeadm, kubelet, kubectl 설치"]
+    init["<b>kubeadm init (첫 번째 Control Plane)</b><br/>• 인증서 생성<br/>• Static Pod 매니페스트 생성<br/>• etcd 부트스트래핑<br/>• 기본 addon 설치"]
+    joinCP["<b>kubeadm join --control-plane</b><br/>(추가 CP 노드)"]
+    joinWrk["<b>kubeadm join</b><br/>(Worker 노드)"]
+    cni["<b>CNI 설치 (Cilium)</b><br/>모든 노드가 Ready 상태로 전환"]
+
+    prep --> init
+    init --> joinCP
+    init --> joinWrk
+    joinCP --> cni
+    joinWrk --> cni
 ```
 
 ---
