@@ -62,10 +62,16 @@ graph TD
 
 ```mermaid
 graph TD
-    kubelet["<b>쿠버네티스 (kubelet)</b><br/>CRI (Container Runtime Interface)"]
-    kubelet -- "gRPC 호출" --> containerd["<b>containerd (v2.2.2)</b><br/>High-Level Container Runtime<br/>• 이미지 관리 (pull, push, store)<br/>• 컨테이너 라이프사이클 관리<br/>• 스냅샷 관리<br/>• 네트워크 인터페이스 설정"]
-    containerd -- "OCI Runtime Spec" --> runc["<b>runc</b><br/>Low-Level OCI Runtime<br/>• namespace 생성<br/>• cgroup 설정<br/>• 실제 프로세스 실행"]
+    kubelet["kubelet (CRI)"]
+    kubelet -- "gRPC" --> containerd["containerd v2.2.2<br/>High-Level Runtime"]
+    containerd -- "OCI Spec" --> runc["runc<br/>Low-Level Runtime"]
 ```
+
+**컨테이너 런타임 계층 상세:**
+
+- **kubelet**: CRI (Container Runtime Interface)를 통해 컨테이너 런타임과 gRPC로 통신
+- **containerd**: High-Level Container Runtime. 이미지 관리(pull, push, store), 컨테이너 라이프사이클 관리, 스냅샷 관리, 네트워크 인터페이스 설정
+- **runc**: Low-Level OCI Runtime. namespace 생성, cgroup 설정, 실제 프로세스 실행
 
 ### CRI (Container Runtime Interface)
 
