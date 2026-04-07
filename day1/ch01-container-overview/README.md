@@ -14,28 +14,27 @@
 
 ### 비교 다이어그램
 
-```mermaid
-graph TD
-    subgraph VM["가상 머신 (VM)"]
-        direction TB
-        vmA["App A + Bins/Libs"] --> guestA["Guest OS"]
-        vmB["App B + Bins/Libs"] --> guestB["Guest OS"]
-        vmC["App C + Bins/Libs"] --> guestC["Guest OS"]
-        guestA --> hyper["Hypervisor"]
-        guestB --> hyper
-        guestC --> hyper
-        hyper --> vmOS["호스트 OS"]
-        vmOS --> vmHW["하드웨어"]
-    end
-
-    subgraph Container["컨테이너"]
-        direction TB
-        cA["App A + Bins/Libs"] --> runtime["Container Runtime (containerd)"]
-        cB["App B + Bins/Libs"] --> runtime
-        cC["App C + Bins/Libs"] --> runtime
-        runtime --> cOS["호스트 OS (Linux)"]
-        cOS --> cHW["하드웨어"]
-    end
+```
+  가상 머신 (VM)                        컨테이너
+ ┌──────────────────────────┐        ┌──────────────────────────┐
+ │ ┌──────┐┌──────┐┌──────┐ │        │ ┌──────┐┌──────┐┌──────┐ │
+ │ │App A ││App B ││App C │ │        │ │App A ││App B ││App C │ │
+ │ │+Libs ││+Libs ││+Libs │ │        │ │+Libs ││+Libs ││+Libs │ │
+ │ ├──────┤├──────┤├──────┤ │        │ └──┬───┘└──┬───┘└──┬───┘ │
+ │ │Guest ││Guest ││Guest │ │        │    └───────┼───────┘     │
+ │ │ OS   ││ OS   ││ OS   │ │        │ ┌─────────▼───────────┐  │
+ │ └──┬───┘└──┬───┘└──┬───┘ │        │ │  Container Runtime  │  │
+ │    └───────┼───────┘     │        │ │    (containerd)      │  │
+ │ ┌─────────▼───────────┐  │        │ └─────────┬───────────┘  │
+ │ │     Hypervisor       │  │        │ ┌─────────▼───────────┐  │
+ │ └─────────┬───────────┘  │        │ │  호스트 OS (Linux)   │  │
+ │ ┌─────────▼───────────┐  │        │ └─────────┬───────────┘  │
+ │ │      호스트 OS       │  │        │ ┌─────────▼───────────┐  │
+ │ └─────────┬───────────┘  │        │ │      하드웨어        │  │
+ │ ┌─────────▼───────────┐  │        │ └─────────────────────┘  │
+ │ │      하드웨어        │  │        └──────────────────────────┘
+ │ └─────────────────────┘  │
+ └──────────────────────────┘
 ```
 
 ### 핵심 차이점
