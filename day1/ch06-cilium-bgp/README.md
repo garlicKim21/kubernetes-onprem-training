@@ -20,6 +20,8 @@ Cilium은 **eBPF(extended Berkeley Packet Filter)** 기반의 CNI(Container Netw
 
 eBPF는 Linux 커널 내부에서 사용자 정의 프로그램을 실행할 수 있는 기술입니다.
 
+> 📖 eBPF에 대해 더 깊이 알고 싶다면: [https://ebpf.io/what-is-ebpf/](https://ebpf.io/what-is-ebpf/)
+
 ```
   ┌──────────────────────────────────────────┐
   │               사용자 공간                  │
