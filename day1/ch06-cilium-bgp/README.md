@@ -48,7 +48,7 @@ eBPF는 Linux 커널 내부에서 사용자 정의 프로그램을 실행할 수
 | 기능 | 설명 |
 |------|------|
 | **CNI** | Pod 네트워크 인터페이스 설정 및 IP 할당 |
-| **kube-proxy 대체** | eBPF로 Service 로드밸런싱 (iptables/ipvs 불필요) |
+| **kube-proxy 대체** | eBPF로 Service 로드밸런싱 (iptables/ipvs/nftables 불필요) |
 | **Network Policy** | L3/L4/L7 수준의 네트워크 정책 |
 | **LB-IPAM** | LoadBalancer Service에 IP 자동 할당 |
 | **BGP** | 외부 라우터와 BGP 피어링으로 경로 광고 |
@@ -61,12 +61,17 @@ eBPF는 Linux 커널 내부에서 사용자 정의 프로그램을 실행할 수
 ### 기존 kube-proxy 방식
 
 ```
-  Pod → iptables/ipvs 규칙 → 대상 Pod
+  Pod → iptables/ipvs/nftables 규칙 → 대상 Pod
          (커널 네트워크 스택 전체 통과)
 ```
 
-- **iptables 모드**: 규칙이 선형 검색, Service가 많으면 성능 저하
-- **ipvs 모드**: 해시 테이블 기반으로 개선되었지만, 여전히 커널 네트워크 스택 전체를 통과
+kube-proxy는 Kubernetes에서 Service 트래픽을 처리하는 기본 컴포넌트로, 역사적으로 여러 모드를 거쳐 발전해 왔습니다:
+
+- **iptables 모드**: 가장 오래된 모드. 규칙이 선형 검색(O(n))이라 Service가 많으면 성능 저하. 아직 deprecated는 아니지만, Linux 커널 자체에서 iptables가 nftables로 대체되는 추세이므로 장기적으로는 권장되지 않음
+- **ipvs 모드**: 해시 테이블 기반으로 성능이 개선되었지만, **K8s v1.35에서 공식 deprecated**됨. 향후 버전에서 제거 예정이며 nftables 모드로 마이그레이션이 권장됨
+- **nftables 모드**: K8s v1.33에서 GA(정식 출시)된 새로운 권장 모드. Linux nftables API를 직접 사용하여 iptables의 레거시 문제를 해결. 현재 kube-proxy를 사용한다면 이 모드가 권장됨
+
+> **왜 이것이 중요한가?** kube-proxy의 모드 변천사는 Linux 커널 네트워킹의 발전 방향을 반영합니다. iptables → nftables로의 전환은 Linux 생태계 전체의 흐름이며, Kubernetes도 이에 맞춰 진화하고 있습니다. 하지만 Cilium처럼 eBPF 기반으로 kube-proxy 자체를 대체하는 접근은, 이러한 모드 변경에 영향을 받지 않는 근본적인 해결책입니다.
 
 ### Cilium (eBPF) 방식
 
@@ -75,13 +80,17 @@ eBPF는 Linux 커널 내부에서 사용자 정의 프로그램을 실행할 수
          (불필요한 커널 스택 바이패스)
 ```
 
-| 비교 항목 | kube-proxy (iptables) | kube-proxy (ipvs) | Cilium (eBPF) |
-|----------|----------------------|-------------------|---------------|
-| Service 조회 | O(n) 선형 | O(1) 해시 | O(1) eBPF map |
-| 처리 위치 | 커널 네트워크 스택 | 커널 네트워크 스택 | TC/XDP (커널 초기) |
-| 연결 추적 | conntrack | conntrack | eBPF CT map |
-| 확장성 | 수천 Service에서 성능 저하 | 양호 | 매우 우수 |
-| 관측성 | 제한적 | 제한적 | Hubble (L3-L7) |
+| 비교 항목 | kube-proxy (iptables) | kube-proxy (ipvs) | kube-proxy (nftables) | Cilium (eBPF) |
+|----------|----------------------|-------------------|----------------------|---------------|
+| Service 조회 | O(n) 선형 | O(1) 해시 | O(1) nftables map | O(1) eBPF map |
+| 처리 위치 | 커널 네트워크 스택 | 커널 네트워크 스택 | 커널 네트워크 스택 | TC/XDP (커널 초기) |
+| 연결 추적 | conntrack | conntrack | conntrack | eBPF CT map |
+| 확장성 | 수천 Service에서 성능 저하 | 양호 | 양호 | 매우 우수 |
+| 관측성 | 제한적 | 제한적 | 제한적 | Hubble (L3-L7) |
+| **상태 (K8s v1.35)** | 유지 중 (레거시) | **deprecated** | **GA (권장)** | **kube-proxy 완전 대체** |
+| **향후 방향** | Linux에서 iptables 자체가 퇴장 중 | 향후 버전에서 제거 예정 | kube-proxy 사용 시 권장 | iptables/ipvs/nftables 모두 불필요 |
+
+> **우리 클러스터는 Cilium이 kube-proxy를 완전히 대체**하고 있으므로, 위의 iptables/ipvs/nftables 모드 선택을 고민할 필요가 없습니다. eBPF가 커널 초기 단계에서 패킷을 처리하기 때문에, 커널 네트워크 스택을 우회하여 더 높은 성능과 풍부한 관측성을 제공합니다.
 
 ### 우리 클러스터 설정
 
