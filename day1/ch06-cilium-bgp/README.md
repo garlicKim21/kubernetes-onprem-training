@@ -557,16 +557,33 @@ Hubble은 Cilium에 내장된 네트워크 관측성(Observability) 도구입니
 
 ### Hubble CLI (참고)
 
+Hubble CLI는 터미널에서 실시간 네트워크 플로우를 관찰할 수 있는 도구입니다.
+
 ```bash
-# Pod 간 네트워크 플로우 관찰
+# 먼저 Hubble Relay에 연결 (백그라운드로 실행)
+cilium hubble port-forward &
+
+# Pod 간 네트워크 플로우 실시간 관찰
 hubble observe --namespace default
 
-# 특정 Pod의 트래픽 관찰
-hubble observe --to-pod default/nginx-bgp-demo-xxxxx
+# 최근 10개 이벤트만 확인
+hubble observe --namespace default --last 10
+
+# 특정 Pod로 향하는 트래픽 관찰
+hubble observe --to-pod default/nginx-xxxxx
+
+# 특정 서비스로 향하는 트래픽 관찰
+hubble observe --to-service default/my-service
 
 # DNS 관련 플로우만 필터
 hubble observe --type l7 --protocol DNS
+
+# 드롭된 패킷만 확인 (네트워크 정책 디버깅에 유용)
+hubble observe --verdict DROPPED
 ```
+
+> **참고**: `cilium hubble port-forward`는 Hubble Relay Pod에 대한 포트 포워딩을 설정합니다.
+> 터미널 세션이 끝나면 자동으로 종료되므로, 새 터미널에서 사용할 때마다 다시 실행해야 합니다.
 
 ---
 
