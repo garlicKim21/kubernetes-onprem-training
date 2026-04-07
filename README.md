@@ -8,7 +8,7 @@
 | **교육 기관** | Basphere (대구) |
 | **교육 기간** | 2일 (강사 주도형 실습 교육) |
 | **대상** | 쿠버네티스 입문 ~ 초급 수준의 개발자 및 인프라 엔지니어 |
-| **교육 방식** | 강사가 모든 내용을 데모로 진행하며, 수강생은 읽기 전용 환경(kubectl, Headlamp, Grafana)으로 실시간 확인 |
+| **교육 방식** | 강사 데모 + 수강생 실습 혼합. 수강생은 개인 네임스페이스(lab-01~lab-30)에서 직접 실습하며, 강사 데모는 Headlamp/Grafana에서 확인 |
 | **Kubernetes 버전** | v1.35.3 |
 | **CNI** | Cilium v1.19.2 (kube-proxy 대체) |
 | **Container Runtime** | containerd 2.2.2 |
@@ -33,20 +33,21 @@
 | 15:40–16:40 | Ch.07 | Gateway API를 이용한 HTTP 라우팅 |
 | 16:40–17:00 | — | Day 1 정리 및 Q&A |
 
-### Day 2 — 스토리지, 관측성, 보안, 고급 운영
+### Day 2 — 스토리지, 오토스케일링, 모니터링, 실무
 
 | 시간 | 챕터 | 주제 |
 |------|-------|------|
-| 09:00–10:00 | Ch.08 | 스토리지: PV, PVC, StorageClass |
-| 10:00–11:00 | Ch.09 | 모니터링과 관측성: Prometheus, Grafana, Hubble |
-| 11:00–11:10 | — | 휴식 |
-| 11:10–12:10 | Ch.10 | 보안: RBAC, NetworkPolicy, ServiceAccount |
-| 12:10–13:10 | — | 점심 |
-| 13:10–14:10 | Ch.11 | Helm 패키지 매니저 |
-| 14:10–15:10 | Ch.12 | 고급 스케줄링 및 운영 |
-| 15:10–15:20 | — | 휴식 |
-| 15:20–16:20 | Ch.13 | 부하 테스트와 오토스케일링 |
-| 16:20–17:00 | — | 전체 정리 및 Q&A |
+| 09:00–09:50 | Ch.08 | 스토리지 기초: Volume, PV, PVC |
+| 09:50–10:40 | Ch.09 | StorageClass와 동적 프로비저닝 |
+| 10:40–10:50 | — | 휴식 |
+| 10:50–11:50 | Ch.10 | 데이터베이스 on Kubernetes: StatefulSet과 MySQL |
+| 11:50–12:30 | Ch.11 | HPA: Horizontal Pod Autoscaler |
+| 12:30–13:30 | — | 점심 |
+| 13:30–14:30 | Ch.12 | 모니터링과 관측성: Prometheus & Grafana |
+| 14:30–15:30 | Ch.13 | 종합 데모: 배포부터 오토스케일링까지 |
+| 15:30–15:40 | — | 휴식 |
+| 15:40–16:40 | Ch.14 | 실무 적용 가이드 |
+| 16:40–17:00 | — | 전체 정리 및 Q&A |
 
 ---
 
@@ -78,6 +79,15 @@
 
                   ┌──────┴──────┐      ┌──────┴──────┐      ┌──────┴──────┐
                   │   wrk-0     │      │   wrk-1     │      │   wrk-2     │
+                  │ Worker      │      │ Worker      │      │ Worker      │
+                  │             │      │             │      │             │
+                  │ • kubelet   │      │ • kubelet   │      │ • kubelet   │
+                  │ • Cilium    │      │ • Cilium    │      │ • Cilium    │
+                  │ • containerd│      │ • containerd│      │ • containerd│
+                  └─────────────┘      └─────────────┘      └─────────────┘
+
+                  ┌─────────────┐      ┌─────────────┐      ┌─────────────┐
+                  │   wrk-3     │      │   wrk-4     │      │   wrk-5     │
                   │ Worker      │      │ Worker      │      │ Worker      │
                   │             │      │             │      │             │
                   │ • kubelet   │      │ • kubelet   │      │ • kubelet   │
@@ -122,7 +132,7 @@ kubectl cluster-info
 kubectl get nodes
 ```
 
-> **참고:** 수강생 kubeconfig는 읽기 전용(view) 권한만 부여되어 있습니다.
+> **참고:** 수강생 kubeconfig는 본인 네임스페이스(lab-XX)에서 Pod, Deployment, Service, ConfigMap, Secret, PVC, HPA, HTTPRoute를 생성/삭제할 수 있으며, 그 외 네임스페이스는 읽기 전용(view)입니다.
 
 ---
 
@@ -171,11 +181,12 @@ kubernetes-onprem-training/
 │   ├── ch06-cilium-bgp/              Cilium과 BGP LoadBalancer
 │   └── ch07-gateway-api/             Gateway API
 ├── day2/
-│   ├── ch08-storage/                  스토리지
-│   ├── ch09-observability/            모니터링과 관측성
-│   ├── ch10-security/                 보안
-│   ├── ch11-helm/                     Helm 패키지 매니저
-│   ├── ch12-advanced-scheduling/      고급 스케줄링
-│   └── ch13-load-testing/            부하 테스트와 오토스케일링
+│   ├── ch08-storage-basics/           스토리지 기초: Volume, PV, PVC
+│   ├── ch09-storageclass/             StorageClass와 동적 프로비저닝
+│   ├── ch10-db-on-k8s/                데이터베이스 on Kubernetes
+│   ├── ch11-hpa-autoscaling/          HPA 오토스케일링
+│   ├── ch12-monitoring/               모니터링과 관측성: Prometheus & Grafana
+│   ├── ch13-comprehensive-demo/       종합 데모: 배포부터 오토스케일링까지
+│   └── ch14-real-world/               실무 적용 가이드
 └── appendix/                          부록 자료
 ```

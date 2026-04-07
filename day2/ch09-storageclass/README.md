@@ -137,6 +137,8 @@ csi.vsphere.vmware.com   true             false            false             <un
 
 ---
 
+> 💻 **학생 실습** — 이 섹션은 각자의 lab 네임스페이스에서 직접 실습합니다.
+
 ## 5. 데모: 동적 프로비저닝
 
 ### 5.1 PVC 생성 (PV 없이!)
@@ -221,4 +223,4 @@ kubectl delete pvc dynamic-demo-pvc
 
 ---
 
-> **다음 챕터**: Ch.10에서는 StatefulSet과 동적 프로비저닝을 활용하여 **MySQL 데이터베이스**를 쿠버네티스에 배포합니다.
+> **다음 챕터**: [Ch.10 데이터베이스 on Kubernetes: StatefulSet과 MySQL](../ch10-db-on-k8s/README.md)

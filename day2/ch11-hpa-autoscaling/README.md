@@ -109,6 +109,9 @@ ctrl-2   310m         7%     3100Mi          38%
 wrk-0    450m         11%    4100Mi          51%
 wrk-1    380m         9%     3800Mi          47%
 wrk-2    420m         10%    3900Mi          48%
+wrk-3    410m         10%    3850Mi          48%
+wrk-4    390m         9%     3700Mi          46%
+wrk-5    430m         10%    3950Mi          49%
 ```
 
 ### 3.3 Pod 리소스 사용량 확인
@@ -156,6 +159,8 @@ horizontalpodautoscaler.autoscaling/memory-generator-hpa   Deployment/memory-gen
 > - `memory-generator-hpa`: memory-generator Deployment의 메모리 사용률을 60% 목표로 스케일링
 
 ---
+
+> 🎓 **강사 데모** — 이 섹션은 강사가 시연합니다. 학생들은 Headlamp이나 Grafana에서 결과를 확인할 수 있습니다.
 
 ## 5. 데모: 부하 테스트와 오토스케일링
 
@@ -315,4 +320,4 @@ spec:
 
 ---
 
-> **다음 챕터**: Ch.12에서는 **Prometheus와 Grafana**를 이용한 모니터링과 관측성을 학습합니다.
+> **다음 챕터**: [Ch.12 모니터링과 관측성: Prometheus & Grafana](../ch12-monitoring/README.md)
