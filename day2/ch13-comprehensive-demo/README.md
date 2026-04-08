@@ -216,7 +216,7 @@ kubectl get pods -n demo -l app=nginx-demo -w
 nginx는 정적 파일 서빙이므로 CPU를 많이 사용하지 않습니다. HPA 스케일링을 빠르게 관찰하기 위해 Deployment의 `requests.cpu`를 `10m`으로 낮게 설정했습니다. 여러 부하 생성 Pod를 동시에 실행하여 CPU 사용률을 높입니다:
 
 ```bash
-# 부하 생성용 네임스페이스 생성 (demo 네임스페이스 Grafana 메트릭이 섞이지 않도록 분리)
+# 부하 생성용 네임스페이스 생성
 kubectl create namespace demo-loadgen
 
 # 부하 생성 Pod 3개 동시 실행
