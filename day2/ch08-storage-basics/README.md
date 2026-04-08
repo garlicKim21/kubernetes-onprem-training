@@ -172,6 +172,30 @@ spec:
 >
 > 그래서 프로덕션에서는 **네트워크 스토리지**(vSphere CSI, NFS, Ceph 등)를 사용합니다. 네트워크 스토리지는 어떤 노드에서든 같은 데이터에 접근할 수 있기 때문입니다. 이것은 Ch.09에서 다룹니다.
 
+### PV/PVC 바인딩과 실제 스토리지의 관계
+
+PV와 PVC는 K8s API 서버(etcd)에 저장되는 **실제 리소스 객체**입니다. 하지만 "바인딩"의 의미는 스토리지 유형에 따라 다릅니다.
+
+**hostPath PV의 경우:**
+
+| 시점 | PV/PVC 상태 | 노드의 실제 디스크 |
+|------|-----------|----------------|
+| `kubectl apply -f pv.yaml` | PV 생성 (Available) | 아무 일도 안 일어남 |
+| `kubectl apply -f pvc.yaml` | PV↔PVC 바인딩 (Bound) | 여전히 아무 일도 안 일어남 |
+| **Pod가 wrk-3에 스케줄링** | Bound | **이 순간** wrk-3에서 디렉토리 생성 |
+
+hostPath의 바인딩은 "이 노드 경로를 사용하겠다는 **약속**"에 가깝습니다.
+
+**vSphere CSI PV의 경우 (Ch.09에서 다룸):**
+
+| 시점 | PV/PVC 상태 | 실제 디스크 |
+|------|-----------|-----------|
+| `kubectl apply -f pvc.yaml` | PVC 생성 (Pending) | 대기 중 |
+| **Pod가 스케줄링** | PV 자동 생성 + 바인딩 (Bound) | **vSphere에 VMDK 파일 생성** |
+| Pod가 다른 노드로 이동 | Bound 유지 | VMDK를 새 노드에 **attach** (데이터 유지) |
+
+네트워크 스토리지의 바인딩은 **실제 디스크가 생성되고 연결된 상태**입니다. 이것이 hostPath와의 결정적 차이이며, 프로덕션에서 네트워크 스토리지를 쓰는 이유입니다.
+
 ---
 
 ## 6. PersistentVolumeClaim (PVC): 사용자의 스토리지 요청
