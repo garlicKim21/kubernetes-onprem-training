@@ -24,7 +24,12 @@ spec:
           # ConfigMap에서 커스텀 index.html 마운트
           volumeMounts:
             - name: html-volume
-              mountPath: /usr/share/nginx/html
+              mountPath: /usr/share/nginx/html/index.html
+              subPath: index.html
+              readOnly: true
+            - name: nginx-conf
+              mountPath: /etc/nginx/conf.d/default.conf
+              subPath: default.conf
               readOnly: true
           # HPA가 동작하려면 resources.requests 설정 필수
           resources:
@@ -50,3 +55,12 @@ spec:
         - name: html-volume
           configMap:
             name: nginx-html
+            items:
+              - key: index.html
+                path: index.html
+        - name: nginx-conf
+          configMap:
+            name: nginx-html
+            items:
+              - key: default.conf
+                path: default.conf
