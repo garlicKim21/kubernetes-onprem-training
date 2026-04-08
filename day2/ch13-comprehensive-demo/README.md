@@ -157,18 +157,22 @@ curl -s https://demo.basphere.dev
 
 또는 웹 브라우저에서 `https://demo.basphere.dev` 접속
 
-**예상 출력 (HTML 내용):**
-```html
-<!DOCTYPE html>
-<html>
-<head><title>Kubernetes Training Demo</title></head>
-<body>
-<h1>Basphere Kubernetes Training</h1>
-<p>이 페이지는 쿠버네티스 클러스터에서 실행 중인 nginx에서 제공됩니다.</p>
-<p>Pod: (hostname)</p>
-</body>
-</html>
-```
+**예상 출력 (웹 브라우저에서 확인 시):**
+
+> **Basphere Kubernetes Training**
+>
+> `Kubernetes v1.35.3`
+>
+> 이 페이지는 쿠버네티스 클러스터에서 실행 중인 nginx Pod에서 제공됩니다.
+>
+> **구성 요소:**
+> - ConfigMap으로 HTML 콘텐츠 관리
+> - Deployment로 복제본 관리
+> - Service로 로드밸런싱
+> - Gateway API HTTPRoute로 외부 노출
+> - HPA로 자동 스케일링
+
+curl로 확인 시에는 HTML 소스가 출력됩니다. `<h1>Basphere Kubernetes Training</h1>` 텍스트가 포함되어 있으면 정상입니다.
 
 ---
 
