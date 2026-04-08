@@ -163,16 +163,13 @@ curl -s https://demo.basphere.dev
 >
 > `Kubernetes v1.35.3`
 >
+> 🖥️ 응답 Pod: **nginx-demo-xxxxx-yyyyy**
+>
 > 이 페이지는 쿠버네티스 클러스터에서 실행 중인 nginx Pod에서 제공됩니다.
 >
-> **구성 요소:**
-> - ConfigMap으로 HTML 콘텐츠 관리
-> - Deployment로 복제본 관리
-> - Service로 로드밸런싱
-> - Gateway API HTTPRoute로 외부 노출
-> - HPA로 자동 스케일링
+> 새로고침할 때마다 다른 Pod 이름이 표시될 수 있습니다 (Service 로드밸런싱).
 
-curl로 확인 시에는 HTML 소스가 출력됩니다. `<h1>Basphere Kubernetes Training</h1>` 텍스트가 포함되어 있으면 정상입니다.
+> **포인트**: 브라우저에서 새로고침을 반복하면 응답하는 Pod 이름이 바뀌는 것을 확인할 수 있습니다. 이것이 Service의 로드밸런싱이 동작하는 것입니다. nginx의 SSI(Server Side Includes) 기능을 사용하여 Pod의 hostname을 HTML에 동적으로 주입합니다.
 
 ---
 
