@@ -34,7 +34,7 @@ spec:
           # HPA가 동작하려면 resources.requests 설정 필수
           resources:
             requests:
-              cpu: 50m
+              cpu: 10m              # HPA 데모를 위해 낮게 설정 (부하 시 빠르게 50% 도달)
               memory: 64Mi
             limits:
               cpu: 200m

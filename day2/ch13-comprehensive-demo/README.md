@@ -213,16 +213,21 @@ kubectl get pods -n demo -l app=nginx-demo -w
 
 **터미널 3: 부하 생성**
 
-간단한 부하를 생성하기 위해 클러스터 내에서 반복 요청을 보냅니다. 여러 동시 요청을 보내야 CPU 부하가 발생합니다:
+nginx는 정적 파일 서빙이므로 CPU를 많이 사용하지 않습니다. HPA 스케일링을 빠르게 관찰하기 위해 Deployment의 `requests.cpu`를 `10m`으로 낮게 설정했습니다. 여러 부하 생성 Pod를 동시에 실행하여 CPU 사용률을 높입니다:
 
 ```bash
-# 부하 생성 Pod 실행 (여러 프로세스로 동시 요청)
-kubectl run -n demo load-generator --image=busybox:1.37 --restart=Never -- \
-  /bin/sh -c "while true; do wget -q -O- http://nginx-demo-svc.demo.svc.cluster.local > /dev/null 2>&1; done"
+# 부하 생성 Pod 3개 동시 실행
+for i in 1 2 3; do
+  kubectl run -n demo "load-gen-$i" --image=busybox:1.37 --restart=Never -- \
+    /bin/sh -c "while true; do wget -q -O- http://nginx-demo-svc.demo.svc.cluster.local > /dev/null 2>&1; done"
+done
 ```
 
-> **팁**: 부하가 충분하지 않으면 동일한 명령으로 load-generator-2, load-generator-3 등 추가 Pod를 생성하여 부하를 높일 수 있습니다.
-> 또는 부하 테스트 도구(loadtest.basphere.dev)를 활용할 수 있습니다.
+> **왜 여러 개를 실행하나요?**
+> - nginx는 정적 파일 서빙이라 요청 하나당 CPU 사용이 매우 적습니다
+> - HPA가 반응하려면 Pod의 평균 CPU 사용률이 목표(50%)를 넘어야 합니다
+> - `requests.cpu: 10m` 기준 50%는 5m이므로, 여러 동시 요청으로 이 수준을 넘길 수 있습니다
+> - 실무에서는 애플리케이션 자체가 CPU를 사용하므로 이런 트릭이 불필요합니다
 
 **터미널 1 관찰 (HPA):**
 ```
