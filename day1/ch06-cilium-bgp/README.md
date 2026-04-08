@@ -585,7 +585,9 @@ hubble observe --type l7 --protocol DNS
 hubble observe --verdict DROPPED
 ```
 
-> **참고**: `cilium hubble port-forward`는 Hubble Relay Pod에 대한 포트 포워딩을 설정합니다.
+> **참고**: `Hubble CLI version is lower than Hubble Relay` 경고가 표시될 수 있습니다. CLI와 Relay 버전이 다를 때 나타나며, 동작에는 문제없으므로 무시해도 됩니다.
+>
+> `cilium hubble port-forward`는 Hubble Relay Pod에 대한 포트 포워딩을 설정합니다.
 > 터미널 세션이 끝나면 자동으로 종료되므로, 새 터미널에서 사용할 때마다 다시 실행해야 합니다.
 >
 > **포트 충돌 에러가 발생하면**: `Unable to listen on any of the requested ports: [{4245 4245}]` 에러는 이전 port-forward 프로세스가 남아있기 때문입니다.
