@@ -123,30 +123,54 @@ choco install kubernetes-cli
 3. 자신의 Lab 번호 버튼을 클릭하여 `lab-XX.yaml` 파일을 다운로드합니다 (XX는 본인 번호)
 4. 다운로드한 파일에는 개인 네임스페이스(`lab-XX`)가 기본 설정되어 있습니다
 
-### Step 4: kubectl 설정 및 접속 확인
+### Step 4: kubeconfig 설정
 
+다운로드한 `lab-XX.yaml` 파일을 kubectl 기본 설정 경로(`~/.kube/config`)에 복사합니다. 한 번 설정하면 터미널을 다시 열어도 유지됩니다.
+
+**macOS / Linux:**
 ```bash
-# macOS / Linux
-export KUBECONFIG=~/Downloads/lab-XX.yaml
-
-# Windows (PowerShell) — PowerShell 터미널에서 직접 사용하는 경우
-$env:KUBECONFIG = "$HOME\Downloads\lab-XX.yaml"
-
-# Windows (WSL) — WSL에서 사용하는 경우
-# Windows에서 다운로드한 파일은 /mnt/c/Users/{사용자명}/Downloads/ 경로에 있습니다
-cp /mnt/c/Users/{사용자명}/Downloads/lab-XX.yaml ~/lab-XX.yaml
-export KUBECONFIG=~/lab-XX.yaml
+mkdir -p ~/.kube
+cp ~/Downloads/lab-XX.yaml ~/.kube/config
 ```
 
+**Windows (PowerShell):**
+```powershell
+mkdir -Force $HOME\.kube
+Copy-Item $HOME\Downloads\lab-XX.yaml $HOME\.kube\config
+```
+
+**Windows (WSL):**
 ```bash
-# 접속 테스트
+# Windows에서 다운로드한 파일은 /mnt/c/ 아래에 있습니다
+mkdir -p ~/.kube
+cp /mnt/c/Users/{사용자명}/Downloads/lab-XX.yaml ~/.kube/config
+```
+
+> 💡 기존에 `~/.kube/config`가 있다면 덮어쓰기 전에 `cp ~/.kube/config ~/.kube/config.bak`으로 백업하세요.
+
+### Step 5: 접속 확인
+
+```bash
 kubectl get nodes
-kubectl get pods -A
 ```
 
-> 정상적으로 9개 노드가 표시되면 접속 성공입니다. 여기까지 완료되면 Day 1 Ch.01부터 학습을 시작할 수 있습니다.
+**예상 출력:**
+```
+NAME     STATUS   ROLES           AGE   VERSION
+ctrl-0   Ready    control-plane   ..d   v1.35.3
+ctrl-1   Ready    control-plane   ..d   v1.35.3
+ctrl-2   Ready    control-plane   ..d   v1.35.3
+wrk-0    Ready    <none>          ..d   v1.35.3
+wrk-1    Ready    <none>          ..d   v1.35.3
+wrk-2    Ready    <none>          ..d   v1.35.3
+wrk-3    Ready    <none>          ..d   v1.35.3
+wrk-4    Ready    <none>          ..d   v1.35.3
+wrk-5    Ready    <none>          ..d   v1.35.3
+```
 
-### Step 5: 웹 대시보드 접속
+> 9개 노드가 모두 `Ready`로 표시되면 접속 성공입니다. 여기까지 완료되면 Day 1 Ch.01부터 학습을 시작할 수 있습니다.
+
+### Step 6: 웹 대시보드 접속
 
 | 서비스 | URL | 접속 방법 |
 |--------|-----|-----------|

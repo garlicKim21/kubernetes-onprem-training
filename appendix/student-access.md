@@ -104,19 +104,29 @@ grep "token:" ~/Downloads/lab-XX.yaml | awk '{print $2}'
 
 ### kubeconfig 설정
 
-Lab Portal(https://lab.basphere.dev)에서 다운로드한 `lab-XX.yaml` 파일을 사용합니다.
+Lab Portal(https://lab.basphere.dev)에서 다운로드한 `lab-XX.yaml` 파일을 kubectl 기본 경로에 복사합니다.
+
+**macOS / Linux:**
+```bash
+mkdir -p ~/.kube
+cp ~/Downloads/lab-XX.yaml ~/.kube/config
+```
+
+**Windows (PowerShell):**
+```powershell
+mkdir -Force $HOME\.kube
+Copy-Item $HOME\Downloads\lab-XX.yaml $HOME\.kube\config
+```
+
+**Windows (WSL):**
+```bash
+mkdir -p ~/.kube
+cp /mnt/c/Users/{사용자명}/Downloads/lab-XX.yaml ~/.kube/config
+```
+
+> 💡 기존 `~/.kube/config`가 있다면 `cp ~/.kube/config ~/.kube/config.bak`으로 백업 후 복사하세요.
 
 ```bash
-# macOS / Linux
-export KUBECONFIG=~/Downloads/lab-XX.yaml
-
-# Windows (PowerShell)
-$env:KUBECONFIG = "$HOME\Downloads\lab-XX.yaml"
-
-# Windows (WSL) — Windows에서 다운로드한 파일을 WSL로 복사
-cp /mnt/c/Users/{사용자명}/Downloads/lab-XX.yaml ~/lab-XX.yaml
-export KUBECONFIG=~/lab-XX.yaml
-
 # 접속 테스트
 kubectl cluster-info
 ```
@@ -146,15 +156,17 @@ wrk-4    Ready    <none>          30d   v1.35.3
 wrk-5    Ready    <none>          30d   v1.35.3
 ```
 
-### kubeconfig를 기본 경로에 두지 않는 경우
+### 기본 경로 대신 환경변수를 사용하는 경우
+
+`~/.kube/config`에 복사하지 않고 환경변수로 지정할 수도 있습니다. 단, 터미널을 닫으면 설정이 사라집니다.
 
 ```bash
-# KUBECONFIG 환경변수 사용
-export KUBECONFIG=~/lab-XX.yaml
+# 환경변수 사용 (터미널 세션 동안만 유효)
+export KUBECONFIG=~/Downloads/lab-XX.yaml
 kubectl get nodes
 
 # 또는 매 명령어마다 --kubeconfig 플래그 사용
-kubectl get nodes --kubeconfig=~/lab-XX.yaml
+kubectl get nodes --kubeconfig=~/Downloads/lab-XX.yaml
 ```
 
 ### 수강생 kubectl 권한
