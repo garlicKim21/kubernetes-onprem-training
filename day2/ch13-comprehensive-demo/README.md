@@ -216,9 +216,12 @@ kubectl get pods -n demo -l app=nginx-demo -w
 nginx는 정적 파일 서빙이므로 CPU를 많이 사용하지 않습니다. HPA 스케일링을 빠르게 관찰하기 위해 Deployment의 `requests.cpu`를 `10m`으로 낮게 설정했습니다. 여러 부하 생성 Pod를 동시에 실행하여 CPU 사용률을 높입니다:
 
 ```bash
+# 부하 생성용 네임스페이스 생성 (demo 네임스페이스 Grafana 메트릭이 섞이지 않도록 분리)
+kubectl create namespace demo-loadgen
+
 # 부하 생성 Pod 3개 동시 실행
 for i in 1 2 3; do
-  kubectl run -n demo "load-gen-$i" --image=busybox:1.37 --restart=Never -- \
+  kubectl run -n demo-loadgen "load-gen-$i" --image=busybox:1.37 --restart=Never -- \
     /bin/sh -c "while true; do wget -q -O- http://nginx-demo-svc.demo.svc.cluster.local > /dev/null 2>&1; done"
 done
 ```
@@ -261,12 +264,16 @@ nginx-demo-hpa   Deployment/nginx-demo   42%/50%   2         10        5        
 모든 데모가 끝나면 리소스를 정리합니다.
 
 ```bash
-# 네임스페이스 삭제 (모든 리소스 함께 삭제 — load-generator Pod 포함)
+# 부하 생성 네임스페이스 먼저 삭제
+kubectl delete namespace demo-loadgen
+
+# 데모 네임스페이스 삭제 (모든 리소스 함께 삭제)
 kubectl delete namespace demo
 ```
 
 **예상 출력:**
 ```
+namespace "demo-loadgen" deleted
 namespace "demo" deleted
 ```
 
