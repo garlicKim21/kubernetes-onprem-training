@@ -558,7 +558,7 @@ Hubble은 Cilium에 내장된 네트워크 관측성(Observability) 도구입니
 - **DNS 쿼리**: Pod의 DNS 조회 이력
 - **정책 적용**: Network Policy에 의한 허용/차단 여부
 
-### Hubble CLI (참고)
+### Hubble CLI
 
 Hubble CLI는 터미널에서 실시간 네트워크 플로우를 관찰할 수 있는 도구입니다.
 
@@ -585,7 +585,44 @@ hubble observe --type l7 --protocol DNS
 hubble observe --verdict DROPPED
 ```
 
-> **참고**: `Hubble CLI version is lower than Hubble Relay` 경고가 표시될 수 있습니다. CLI와 Relay 버전이 다를 때 나타나며, 동작에는 문제없으므로 무시해도 됩니다.
+#### Hubble CLI 출력 해석
+
+실제 출력 예시를 보며 각 필드의 의미를 이해합니다:
+
+```
+Apr  8 13:01:53.821: default/hubble-demo:60179 (ID:39236) -> kube-system/coredns-7d764666f9-6hljc:53 (ID:16789) to-stack FORWARDED (UDP)
+```
+
+| 필드 | 예시 값 | 의미 |
+|------|---------|------|
+| **타임스탬프** | `Apr  8 13:01:53.821` | 이벤트 발생 시각 |
+| **출발지** | `default/hubble-demo:60179` | 네임스페이스/Pod이름:포트 |
+| **보안 ID** | `(ID:39236)` | Cilium이 Pod에 부여한 보안 식별자 |
+| **방향** | `->` | 요청 방향 (`<-`는 응답) |
+| **목적지** | `kube-system/coredns-...:53` | 네임스페이스/Pod이름:포트 (53=DNS) |
+| **처리 위치** | `to-stack` | 커널 네트워크 스택으로 전달 |
+| **판정** | `FORWARDED` | 정상 전달 (`DROPPED`이면 차단됨) |
+| **프로토콜** | `(UDP)` | 또는 `(TCP Flags: SYN)`, `(ICMPv4)` 등 |
+
+**방향 기호 의미:**
+- `->` : 요청 (클라이언트 → 서버)
+- `<-` : 응답 (서버 → 클라이언트)
+
+**처리 위치 의미:**
+- `to-stack` : 커널 네트워크 스택으로 올라감 (수신 측에서 처리)
+- `to-endpoint` : 대상 Pod(endpoint)로 전달
+- `to-network` : 외부 네트워크로 전달
+
+**판정(verdict) 의미:**
+- `FORWARDED` : 정상 전달됨
+- `DROPPED` : 네트워크 정책 등에 의해 차단됨
+- `ERROR` : 처리 중 에러 발생
+
+> **참고**: Hubble은 **과거 플로우 로그를 버퍼에 보관**합니다. 이미 삭제된 Pod의 트래픽도 표시될 수 있습니다. 타임스탬프를 확인하여 현재 트래픽과 과거 기록을 구분하세요.
+
+#### 트러블슈팅
+
+> `Hubble CLI version is lower than Hubble Relay` 경고가 표시될 수 있습니다. CLI와 Relay 버전이 다를 때 나타나며, 동작에는 문제없으므로 무시해도 됩니다.
 >
 > `cilium hubble port-forward`는 Hubble Relay Pod에 대한 포트 포워딩을 설정합니다.
 > 터미널 세션이 끝나면 자동으로 종료되므로, 새 터미널에서 사용할 때마다 다시 실행해야 합니다.
@@ -596,6 +633,41 @@ hubble observe --verdict DROPPED
 > kill $(lsof -t -i:4245) 2>/dev/null
 > cilium hubble port-forward &
 > ```
+
+### Hubble UI
+
+Hubble UI는 웹 브라우저에서 네트워크 플로우를 **시각적으로** 관찰할 수 있는 도구입니다.
+
+**접속 URL**: [https://hubble.basphere.dev](https://hubble.basphere.dev)
+
+#### 주요 기능
+
+1. **서비스 맵 (Service Map)**
+   - 화면 상단에서 네임스페이스를 선택합니다 (예: `kube-system`, `load-tester`, `default`)
+   - 선택한 네임스페이스 내의 서비스/Pod 간 통신 관계가 그래프로 표시됩니다
+   - 노드(원)는 서비스, 엣지(선)는 트래픽 흐름을 나타냅니다
+
+2. **플로우 테이블 (Flow Table)**
+   - 하단에 실시간 네트워크 플로우 목록이 표시됩니다
+   - CLI의 `hubble observe`와 동일한 정보를 표 형태로 보여줍니다
+   - 각 행을 클릭하면 상세 정보를 확인할 수 있습니다
+
+3. **필터링**
+   - 네임스페이스, verdict(forwarded/dropped), 프로토콜(TCP/UDP/HTTP) 등으로 필터 가능
+   - 특정 서비스 간 트래픽만 골라볼 수 있습니다
+
+#### 교육에서 활용
+
+수강생들에게 Hubble UI에서 관찰하면 좋은 순간:
+
+| 시점 | 관찰할 네임스페이스 | 보이는 것 |
+|------|-------------------|----------|
+| Ch05 Service 데모 | `default` | busybox → nginx Service → nginx Pod 트래픽 흐름 |
+| Ch06 BGP LoadBalancer | `default` | 외부 트래픽 → LoadBalancer Service → Pod |
+| Ch10 MySQL 데모 | `db-demo` | MySQL 클라이언트 → mysql-0 Pod (3306 포트) |
+| Ch11 HPA 부하 테스트 | `load-tester` | load-gen → backend → cpu-generator 트래픽 폭증 |
+
+> 📖 Hubble UI에 대한 자세한 내용: [Cilium 공식 문서 — Hubble UI](https://docs.cilium.io/en/stable/observability/hubble/hubble-ui/)
 
 ---
 
