@@ -390,3 +390,51 @@ kubectl debug -it <Pod이름> --image=busybox:1.37 -n <네임스페이스>
 | **Terminating** | Finalizer 확인, `kubectl delete pod --force --grace-period=0` (최후 수단) |
 | **Evicted** | 노드 리소스 부족 (메모리/디스크), `kubectl describe node` |
 | **OOMKilled** | 메모리 제한(limits.memory) 초과, 메모리 제한 늘리기 |
+
+---
+
+## Gateway API HTTPRoute가 동작하지 않을 때
+
+### 증상
+
+HTTPRoute를 생성했는데 Gateway를 통해 접근 시 **404 Not Found**가 반환됩니다.
+
+### 진단 절차
+
+**1단계: HTTPRoute 상태 확인**
+
+```bash
+kubectl get httproute -n <namespace> -o jsonpath='{.items[0].status.parents[0].conditions}' | python3 -m json.tool
+```
+
+정상이라면 `"reason": "Accepted"`, `"status": "True"`가 표시됩니다.
+
+**status가 비어있거나 조건이 없는 경우** → Gateway Controller가 이 HTTPRoute를 아직 인식하지 못한 것입니다.
+
+**2단계: Cilium Operator 로그에서 reconcile 확인**
+
+```bash
+kubectl logs -n kube-system deploy/cilium-operator --tail=30 | grep -i "httproute\|reconcil"
+```
+
+해당 네임스페이스의 HTTPRoute에 대한 reconcile 로그가 없다면, Operator가 이벤트를 놓친 것입니다.
+
+**3단계: Cilium Operator 재시작**
+
+```bash
+kubectl rollout restart deployment cilium-operator -n kube-system
+```
+
+재시작 후 20~30초 대기하면 Operator가 전체 리소스를 다시 reconcile하면서 누락된 HTTPRoute도 처리됩니다.
+
+```bash
+# 재시작 후 확인
+kubectl get httproute -n <namespace> -o jsonpath='{.items[0].status.parents[0].conditions[0].reason}'
+# "Accepted"가 출력되면 정상
+```
+
+### 원인
+
+이 현상은 **Cilium Gateway Controller의 일시적인 watch 이벤트 누락**으로 발생할 수 있습니다. 새 네임스페이스 생성과 HTTPRoute 생성이 거의 동시에 이루어질 때, Operator의 informer cache가 아직 새 네임스페이스를 sync하지 못한 상태에서 HTTPRoute 이벤트가 도착하면 reconcile 루프에서 놓칠 수 있습니다.
+
+이는 분산 시스템의 eventual consistency 특성에 의한 드문 현상이며, Gateway API 표준 자체의 결함이 아닌 컨트롤러 구현의 타이밍 이슈입니다. 대부분의 경우 수 초 내에 자동으로 reconcile되지만, 간헐적으로 수동 재시작이 필요할 수 있습니다.
