@@ -3,7 +3,7 @@
 ## 학습 목표
 
 - 쿠버네티스 네트워킹 모델을 이해한다
-- Service의 개념과 세 가지 유형(ClusterIP, NodePort, LoadBalancer)을 파악한다
+- Service의 개념과 네 가지 유형(ClusterIP, NodePort, LoadBalancer, Headless)을 파악한다
 - DNS 기반 서비스 디스커버리를 이해한다
 - Endpoints와 EndpointSlice의 역할을 파악한다
 
@@ -382,13 +382,125 @@ kubectl delete -f examples/
 
 ---
 
+> 🎓 **강사 데모** — 이 섹션은 강사가 시연합니다. 수강생들은 Headlamp이나 Grafana에서 결과를 확인할 수 있습니다.
+
+## 5. Headless Service: Pod별 고유 DNS
+
+### 개념 설명
+
+일반 Service(ClusterIP)는 가상 IP를 통해 로드밸런싱합니다. 요청이 들어오면 kube-proxy나 Cilium이 **임의의 Pod**에 트래픽을 전달하므로, 어떤 Pod가 응답할지 알 수 없습니다.
+
+**Headless Service**(`clusterIP: None`)는 ClusterIP를 할당하지 않고, DNS 조회 시 **Pod IP를 직접 반환**합니다.
+
+StatefulSet과 함께 사용하면 `pod-name.service-name.namespace.svc.cluster.local` 형식으로 **특정 Pod를 지정해서 호출**할 수 있습니다.
+
+**주요 사용 사례:**
+- **DB Master-Slave 구성**: Master Pod에만 쓰기 요청을 보내야 할 때
+- **분산 시스템**: 각 노드가 서로를 DNS로 찾아 직접 통신해야 할 때 (etcd, Cassandra 등)
+
+### 일반 Service vs Headless Service 비교
+
+| | 일반 Service (ClusterIP) | Headless Service |
+|---|---|---|
+| ClusterIP | 있음 (10.96.x.x) | 없음 (None) |
+| DNS 응답 | ClusterIP 반환 | Pod IP 직접 반환 |
+| 로드밸런싱 | kube-proxy/Cilium이 분배 | 없음 (클라이언트가 선택) |
+| 특정 Pod 지정 | 불가 | pod-name.svc-name으로 가능 |
+
+### 데모: Headless Service DNS 확인
+
+#### Step 1. StatefulSet + Headless Service 배포
+
+```bash
+kubectl apply -f examples/headless-service.yaml
+```
+
+**examples/headless-service.yaml:**
+
+```yaml
+---
+# Headless Service: clusterIP: None으로 Pod IP 직접 반환
+apiVersion: v1
+kind: Service
+metadata:
+  name: headless-svc
+spec:
+  clusterIP: None            # Headless Service의 핵심!
+  selector:
+    app: web
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+---
+# StatefulSet: serviceName이 Headless Service 이름과 일치해야 함
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: web
+spec:
+  serviceName: headless-svc   # Headless Service 이름과 반드시 일치
+  replicas: 3
+  selector:
+    matchLabels:
+      app: web
+  template:
+    metadata:
+      labels:
+        app: web
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.27
+          ports:
+            - containerPort: 80
+```
+
+#### Step 2. Pod 준비 확인
+
+```bash
+kubectl get pods -l app=web
+# web-0, web-1, web-2 모두 Running 상태 확인
+```
+
+#### Step 3. Headless Service DNS 조회 — Pod IP 직접 반환
+
+```bash
+# Headless Service 이름으로 DNS 조회
+kubectl run dns-test --image=busybox:1.36 --rm -it --restart=Never -- nslookup headless-svc
+# → 3개 Pod IP가 모두 반환됨 (ClusterIP가 아닌 실제 Pod IP!)
+```
+
+#### Step 4. 개별 Pod 지정 호출
+
+```bash
+# web-0 Pod만 지정해서 DNS 조회
+kubectl run dns-test2 --image=busybox:1.36 --rm -it --restart=Never -- nslookup web-0.headless-svc
+# → web-0 Pod의 IP만 반환 (항상 동일)
+
+# web-2 Pod만 지정해서 DNS 조회
+kubectl run dns-test3 --image=busybox:1.36 --rm -it --restart=Never -- nslookup web-2.headless-svc
+# → web-2 Pod의 IP만 반환 (항상 동일)
+```
+
+> **핵심**: 일반 Service는 DNS 조회 시 ClusterIP 하나만 반환하지만, Headless Service는 **모든 Pod IP를 직접 반환**합니다. 또한 `pod-name.svc-name` 형식으로 **특정 Pod를 지정**할 수 있습니다.
+
+#### Step 5. 정리
+
+```bash
+kubectl delete -f examples/headless-service.yaml
+```
+
+---
+
 ## 핵심 요약
 
 1. 쿠버네티스의 모든 Pod는 **고유 IP**를 가지며, NAT 없이 통신합니다
 2. **Service**는 Pod 그룹에 대한 안정적인 엔드포인트(IP + DNS)를 제공합니다
 3. **ClusterIP**: 내부 전용, **NodePort**: 노드 포트로 외부 접근, **LoadBalancer**: 외부 LB IP 할당
-4. **DNS**: `<service>.<namespace>.svc.cluster.local` 형식으로 서비스에 접근 가능
-5. **EndpointSlice**가 Service와 Pod를 연결하는 실제 메커니즘입니다
+4. **Headless Service**: `clusterIP: None`으로 Pod IP 직접 반환, StatefulSet과 함께 Pod별 고유 DNS 제공
+5. **DNS**: `<service>.<namespace>.svc.cluster.local` 형식으로 서비스에 접근 가능
+6. **EndpointSlice**가 Service와 Pod를 연결하는 실제 메커니즘입니다
 
 ---
 
