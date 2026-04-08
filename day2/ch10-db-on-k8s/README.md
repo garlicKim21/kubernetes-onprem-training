@@ -48,91 +48,38 @@ graph TD
 
 ---
 
-## 1.1 Headless Service 상세 설명
+## 1.1 Headless Service와 MySQL
 
-### 일반 Service vs Headless Service
+> Ch.05에서 배운 Headless Service를 기억하시나요? `clusterIP: None`으로 설정하면 ClusterIP 없이 Pod IP를 직접 반환하고, StatefulSet과 함께 쓰면 `pod-name.svc-name`으로 특정 Pod를 지정 호출할 수 있었습니다. (상세 비교표와 데모는 [Ch.05 Service Networking](../../day1/ch05-service-networking/README.md)을 참고하세요.)
 
-일반 Service는 **ClusterIP(가상 IP)**를 할당받아 로드밸런싱합니다:
+### MySQL에 Headless Service가 필요한 이유
 
-```mermaid
-graph TD
-    client["Client<br/>→ 10.96.100.50"]
-    client -- "랜덤 분배<br/>(가상 IP, 로드밸런싱)" --> podA["Pod-A"]
-    client --> podB["Pod-B"]
-    client --> podC["Pod-C"]
-```
+**1. StatefulSet의 필수 요구사항**
 
-> 일반 Service: ClusterIP(10.96.100.50) → 어떤 Pod로 갈지 모름
+StatefulSet은 `serviceName` 필드에 Headless Service 이름을 지정해야 합니다. MySQL replica가 1개뿐이라도 StatefulSet을 사용한다면 Headless Service는 **필수**입니다. 이를 통해 `mysql-0.mysql-svc` 형태의 안정적인 DNS를 얻습니다.
 
-Headless Service는 **ClusterIP가 없습니다** (`clusterIP: None`):
+**2. Master-Slave 구성 시 Master 지정**
 
-```mermaid
-graph TD
-    dns1["DNS: mysql-svc..."] -- "Pod IP 직접 반환" --> ip1["10.244.1.5"]
-    dns2["DNS: mysql-0.mysql-svc..."] -- "특정 Pod IP 반환" --> ip2["10.244.1.5"]
-```
+MySQL Master-Slave(복제) 구성에서는 쓰기 요청을 반드시 Master에만 보내야 합니다. Headless Service 덕분에 `mysql-0.mysql-svc`로 Master Pod에 직접 접근할 수 있습니다. 일반 Service로는 어떤 Pod가 응답할지 알 수 없어 이 구성이 불가능합니다.
 
-**Headless Service DNS 쿼리 예시:**
+**3. 분산 DB (Galera, Vitess 등)**
 
-- `mysql-svc.db-demo.svc.cluster.local` → Pod의 실제 IP를 직접 반환 (ClusterIP가 아님)
-- `mysql-0.mysql-svc.db-demo.svc.cluster.local` → 항상 mysql-0 Pod의 IP를 반환
+분산 DB 클러스터에서는 각 노드가 서로를 DNS로 찾아야 합니다. Headless Service를 통해 `mysql-0.mysql-svc`, `mysql-1.mysql-svc`, `mysql-2.mysql-svc`로 노드 간 직접 통신이 가능합니다.
 
-### Headless Service가 필요한 이유
-
-| 사용 사례 | 일반 Service | Headless Service |
-|-----------|-------------|-----------------|
-| 웹 서버 (nginx) | ✅ 아무 Pod나 처리 가능 | 불필요 |
-| DB Master-Slave | ❌ Master를 지정할 수 없음 | ✅ `mysql-0`(Master) 직접 접근 |
-| 분산 DB (etcd, Cassandra) | ❌ 노드간 통신 불가 | ✅ 각 노드가 서로를 DNS로 찾음 |
-| StatefulSet 전반 | ❌ | ✅ 필수 |
-
-### DNS 형식
-
-StatefulSet과 Headless Service를 함께 사용하면 다음과 같은 DNS가 자동 생성됩니다:
-
-```
-{pod-name}.{headless-service-name}.{namespace}.svc.cluster.local
-```
-
-예시:
-- `mysql-0.mysql-svc.db-demo.svc.cluster.local` → mysql-0 Pod의 IP
-- `mysql-1.mysql-svc.db-demo.svc.cluster.local` → mysql-1 Pod의 IP
-
-이 DNS는 **Pod가 재시작되어 IP가 바뀌어도 항상 같은 Pod를 가리킵니다.** 이것이 StatefulSet의 "안정적인 네트워크 ID" 입니다.
-
-### 실습에서 확인
+### 간단 확인 (이미 Ch.05에서 데모를 진행했으므로 결과만 확인)
 
 ```bash
 # Headless Service 확인 (CLUSTER-IP가 None인 것에 주목)
 kubectl get svc -n db-demo
-```
 
-**예상 출력:**
-```
-NAME        TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)    AGE
-mysql-svc   ClusterIP   None         <none>        3306/TCP   5m
-```
+# 예상 출력:
+# NAME        TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)    AGE
+# mysql-svc   ClusterIP   None         <none>        3306/TCP   5m
 
-```bash
-# DNS 테스트: Headless Service 이름으로 쿼리
-kubectl run dns-test -n db-demo --image=busybox:1.36 --rm -it --restart=Never -- nslookup mysql-svc.db-demo.svc.cluster.local
-```
-
-**예상 출력:**
-```
-Name:   mysql-svc.db-demo.svc.cluster.local
-Address: 10.244.x.x    ← Pod의 실제 IP (ClusterIP가 아님!)
-```
-
-```bash
-# DNS 테스트: 개별 Pod 이름으로 쿼리
-kubectl run dns-test2 -n db-demo --image=busybox:1.36 --rm -it --restart=Never -- nslookup mysql-0.mysql-svc.db-demo.svc.cluster.local
-```
-
-**예상 출력:**
-```
-Name:   mysql-0.mysql-svc.db-demo.svc.cluster.local
-Address: 10.244.x.x    ← mysql-0 Pod의 IP
+# 개별 Pod DNS 확인
+kubectl run dns-test -n db-demo --image=busybox:1.36 --rm -it --restart=Never -- \
+  nslookup mysql-0.mysql-svc.db-demo.svc.cluster.local
+# → mysql-0 Pod의 IP 반환 (Pod가 재시작되어도 항상 같은 Pod를 가리킴)
 ```
 
 ---

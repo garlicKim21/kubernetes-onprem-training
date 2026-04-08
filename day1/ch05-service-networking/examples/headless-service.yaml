@@ -1,0 +1,36 @@
+---
+# Headless Service: clusterIP: None으로 Pod IP 직접 반환
+apiVersion: v1
+kind: Service
+metadata:
+  name: headless-svc
+spec:
+  clusterIP: None            # Headless Service의 핵심!
+  selector:
+    app: web
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+---
+# StatefulSet: serviceName이 Headless Service 이름과 일치해야 함
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: web
+spec:
+  serviceName: headless-svc   # Headless Service 이름과 반드시 일치
+  replicas: 3
+  selector:
+    matchLabels:
+      app: web
+  template:
+    metadata:
+      labels:
+        app: web
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.27
+          ports:
+            - containerPort: 80

@@ -1,4 +1,4 @@
-# Chapter 02 — 핵심 워크로드: Pod, ReplicaSet, Deployment
+# Chapter 02 — 핵심 워크로드: Pod, ReplicaSet, Deployment, StatefulSet, DaemonSet
 
 ## 학습 목표
 
@@ -7,6 +7,7 @@
 - Label과 Selector의 역할을 이해한다
 - ReplicaSet과 Deployment의 관계와 차이를 파악한다
 - Rolling Update와 Rollback을 수행할 수 있다
+- StatefulSet과 DaemonSet 등 다양한 워크로드 리소스의 특징과 용도를 이해한다
 
 ---
 
@@ -449,12 +450,152 @@ kubectl get deploy nginx-deploy -o jsonpath='{.spec.template.spec.containers[0].
 
 ---
 
+## 8. StatefulSet 소개
+
+> 🎓 **강사 데모**
+
+### StatefulSet이란?
+
+StatefulSet은 **상태를 가진 애플리케이션**을 관리하기 위한 워크로드 리소스입니다. Deployment와 달리 각 Pod에 **고정된 이름, 순서, 스토리지**를 보장합니다.
+
+### Deployment vs StatefulSet 비교
+
+| 항목 | Deployment | StatefulSet |
+|------|-----------|-------------|
+| **Pod 이름** | 랜덤 해시 (예: `nginx-deploy-7d9f8b6c4-x2k9p`) | 순번 고정 (예: `web-sts-0`, `web-sts-1`) |
+| **생성/삭제 순서** | 순서 없음 (병렬) | 순서 보장 (0 → 1 → 2) |
+| **스토리지** | Pod 삭제 시 함께 삭제 | Pod 삭제 후에도 PVC 유지 |
+| **네트워크 ID** | 변경될 수 있음 | Headless Service로 고정 DNS 제공 |
+| **대표 사용 사례** | 웹 서버, API 서버 (Stateless) | 데이터베이스, 메시지 큐 (Stateful) |
+
+### StatefulSet 데모
+
+```bash
+# StatefulSet 생성 (nginx 3 replicas)
+kubectl apply -f examples/statefulset.yaml
+
+# Pod 이름 확인 — 순번이 고정됨
+kubectl get pods -l app=web-sts
+
+# 예상 출력:
+# web-sts-0   1/1   Running
+# web-sts-1   1/1   Running
+# web-sts-2   1/1   Running
+
+# Deployment와 비교 — 랜덤 이름
+kubectl get pods -l app=nginx-deploy
+# nginx-deploy-7d9f8b6c4-x2k9p  (랜덤)
+
+# Pod 삭제 후 같은 이름으로 재생성되는지 확인
+kubectl delete pod web-sts-1
+kubectl get pods -l app=web-sts -w
+# web-sts-1이 다시 생성됨 (같은 이름!)
+
+# 정리
+kubectl delete -f examples/statefulset.yaml
+```
+
+**examples/statefulset.yaml:**
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-sts-svc
+  labels:
+    app: web-sts
+spec:
+  clusterIP: None
+  selector:
+    app: web-sts
+  ports:
+    - port: 80
+      targetPort: 80
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: web-sts
+  labels:
+    app: web-sts
+spec:
+  serviceName: web-sts-svc
+  replicas: 3
+  selector:
+    matchLabels:
+      app: web-sts
+  template:
+    metadata:
+      labels:
+        app: web-sts
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.27
+          ports:
+            - containerPort: 80
+```
+
+> **참고:** StatefulSet에는 반드시 **Headless Service** (`clusterIP: None`)가 필요합니다. Ch05에서 Headless Service를 자세히 다룹니다.
+
+> **예고:** Ch10에서 MySQL을 StatefulSet으로 배포하며, PersistentVolume과 함께 실제 상태 유지를 실습합니다.
+
+---
+
+## 9. DaemonSet 소개
+
+> 🎓 **강사 데모**
+
+### DaemonSet이란?
+
+DaemonSet은 **클러스터의 모든 노드에 정확히 1개의 Pod를 배포**하는 워크로드 리소스입니다.
+
+- 모든 노드에 정확히 1개씩 Pod를 배포
+- 새 노드가 클러스터에 추가되면 **자동으로 해당 노드에 Pod를 배포**
+- 노드가 제거되면 해당 Pod도 자동으로 정리됨
+- DaemonSet은 모든 노드에 1개씩이므로 **`replicas` 필드가 없음**
+
+### 대표 사용 사례
+
+| 용도 | 예시 |
+|------|------|
+| **로그 수집** | Fluentd, Filebeat |
+| **모니터링** | Prometheus node-exporter |
+| **네트워크 플러그인** | Cilium, Calico, kube-proxy |
+| **스토리지** | Ceph, GlusterFS 에이전트 |
+
+### 클러스터에서 DaemonSet 확인 (데모)
+
+이미 클러스터에 배포된 DaemonSet을 확인합니다. 별도 배포 없이 기존 시스템 DaemonSet을 조회합니다.
+
+```bash
+# 클러스터의 DaemonSet 확인
+kubectl get daemonset -n kube-system
+
+# 예상 출력 (Cilium, node-exporter 등):
+# NAME                    DESIRED   CURRENT   READY   NODE SELECTOR
+# cilium                  9         9         9       <none>
+# cilium-envoy            9         9         9       <none>
+# ...
+
+# Cilium DaemonSet 상세 — 9개 노드에 9개 Pod
+kubectl get pods -n kube-system -l k8s-app=cilium -o wide
+
+# node-exporter DaemonSet — 모니터링 에이전트
+kubectl get pods -n monitoring -l app.kubernetes.io/name=prometheus-node-exporter -o wide
+```
+
+> **핵심:** 9개 노드 클러스터에서 DaemonSet의 DESIRED, CURRENT, READY가 모두 9인 것을 확인하세요. 노드 수와 Pod 수가 항상 일치합니다.
+
+---
+
 ## 정리
 
 ```bash
 kubectl delete deployment nginx-deploy
 kubectl delete replicaset nginx-rs 2>/dev/null
 kubectl delete pod my-nginx 2>/dev/null
+kubectl delete -f examples/statefulset.yaml 2>/dev/null
 ```
 
 ---
@@ -465,7 +606,9 @@ kubectl delete pod my-nginx 2>/dev/null
 2. **Label과 Selector**는 리소스를 분류하고 연결하는 핵심 메커니즘입니다
 3. **ReplicaSet**은 지정된 수의 Pod를 항상 유지합니다
 4. **Deployment**는 ReplicaSet을 관리하며 Rolling Update와 Rollback을 제공합니다
-5. 실무에서는 Pod나 ReplicaSet을 직접 만들지 않고, **Deployment를 통해 관리**합니다
+5. **StatefulSet**은 고정된 Pod 이름과 순서를 보장하며, 데이터베이스 등 상태 유지 워크로드에 사용합니다
+6. **DaemonSet**은 모든 노드에 정확히 1개의 Pod를 배포하며, 로그 수집/모니터링/네트워크에 사용합니다
+7. 실무에서는 워크로드 특성에 따라 **Deployment, StatefulSet, DaemonSet을 구분**하여 사용합니다
 
 ---
 
