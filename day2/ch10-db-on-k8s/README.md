@@ -195,9 +195,37 @@ mysql-secret   Opaque   1      5s
 
 ---
 
-### 2.3 StatefulSet 배포 (Headless Service + StatefulSet)
+### 2.3 PVC 생성 (영속 스토리지)
+
+StatefulSet과 **독립적으로** PVC를 먼저 생성합니다. 이렇게 하면 StatefulSet을 삭제해도 PVC(데이터)는 보존됩니다.
 
 ```bash
+kubectl apply -f examples/mysql-pvc.yaml
+```
+
+**예상 출력:**
+```
+persistentvolumeclaim/mysql-data created
+```
+
+```bash
+kubectl get pvc -n db-demo
+```
+
+**예상 출력:**
+```
+NAME         STATUS    VOLUME   CAPACITY   ACCESS MODES   STORAGECLASS   AGE
+mysql-data   Pending                                      vsphere-csi    5s
+```
+
+> `Pending` 상태는 정상입니다. vSphere CSI의 `WaitForFirstConsumer` 모드로 인해 Pod가 마운트할 때 실제 PV가 생성됩니다.
+
+---
+
+### 2.4 Headless Service + StatefulSet 배포
+
+```bash
+kubectl apply -f examples/mysql-service.yaml
 kubectl apply -f examples/mysql-statefulset.yaml
 ```
 
@@ -209,7 +237,7 @@ statefulset.apps/mysql created
 
 ---
 
-### 2.4 Pod가 준비될 때까지 대기
+### 2.5 Pod가 준비될 때까지 대기
 
 StatefulSet은 Pod를 순서대로 생성합니다. mysql-0 Pod가 Ready 상태가 될 때까지 기다립니다.
 
@@ -235,9 +263,9 @@ mysql-0   1/1     Running   0          25s
 
 ---
 
-### 2.5 PVC 자동 생성 확인
+### 2.6 PVC 바인딩 확인
 
-StatefulSet의 `volumeClaimTemplates`에 의해 PVC가 자동으로 생성됩니다.
+Pod가 시작되면서 PVC가 PV에 바인딩됩니다 (vSphere CSI가 VMDK를 자동 생성).
 
 ```bash
 kubectl get pvc -n db-demo
@@ -245,12 +273,11 @@ kubectl get pvc -n db-demo
 
 **예상 출력:**
 ```
-NAME                STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   AGE
-mysql-data-mysql-0  Bound    pvc-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx   5Gi        RWO            vsphere-csi    30s
+NAME         STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   AGE
+mysql-data   Bound    pvc-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx   5Gi        RWO            vsphere-csi    60s
 ```
 
-> PVC 이름 형식: `{volumeClaimTemplate 이름}-{StatefulSet 이름}-{순번}`
-> 즉, `mysql-data` + `mysql` + `0` = `mysql-data-mysql-0`
+> `STATUS: Bound` — PVC가 PV에 성공적으로 바인딩되었습니다. vSphere 데이터스토어에 5GiB VMDK가 생성된 것입니다.
 
 **PV도 함께 확인:**
 ```bash
@@ -259,12 +286,12 @@ kubectl get pv | grep db-demo
 
 **예상 출력:**
 ```
-pvc-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx   5Gi   RWO   Delete   Bound   db-demo/mysql-data-mysql-0   vsphere-csi   30s
+pvc-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx   5Gi   RWO   Delete   Bound   db-demo/mysql-data   vsphere-csi   60s
 ```
 
 ---
 
-### 2.6 MySQL 접속
+### 2.7 MySQL 접속
 
 이제 mysql-0 Pod에 접속하여 MySQL 클라이언트를 실행합니다.
 
@@ -294,7 +321,7 @@ mysql>
 
 ---
 
-### 2.7 데이터베이스 및 테이블 생성, 데이터 입력
+### 2.8 데이터베이스 및 테이블 생성, 데이터 입력
 
 아래 SQL 명령어를 **하나씩** 복사하여 `mysql>` 프롬프트에 붙여넣으세요.
 
@@ -378,25 +405,58 @@ Bye
 
 ---
 
-### 2.8 데이터 영속성 테스트: Pod 삭제
+### 2.9 데이터 영속성 테스트: StatefulSet 전체 삭제
 
-이제 핵심 테스트입니다. **Pod를 삭제하고 데이터가 살아 있는지 확인**합니다.
+이제 핵심 테스트입니다. Pod가 아니라 **StatefulSet 자체를 완전히 삭제**합니다.
 
 ```bash
-kubectl delete pod mysql-0 -n db-demo
+kubectl delete statefulset mysql -n db-demo
 ```
 
 **예상 출력:**
 ```
-pod "mysql-0" deleted
+statefulset.apps "mysql" deleted
+```
+
+Pod가 완전히 사라진 것을 확인합니다:
+```bash
+kubectl get pods -n db-demo
+```
+
+**예상 출력:**
+```
+No resources found in db-demo namespace.
 ```
 
 ---
 
-### 2.9 Pod 재생성 대기
+### 2.10 PVC가 살아있는지 확인
 
-StatefulSet 컨트롤러가 mysql-0 Pod를 자동으로 다시 생성합니다. 같은 이름(`mysql-0`)으로 다시 만들어지며, **같은 PVC(mysql-data-mysql-0)에 다시 마운트**됩니다.
+StatefulSet과 Pod는 삭제되었지만, **PVC는 여전히 남아있습니다:**
 
+```bash
+kubectl get pvc -n db-demo
+```
+
+**예상 출력:**
+```
+NAME         STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   AGE
+mysql-data   Bound    pvc-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx   5Gi        RWO            vsphere-csi    5m
+```
+
+> **핵심 포인트**: StatefulSet을 삭제해도 PVC는 독립적으로 존재합니다. PVC 안의 데이터(vSphere VMDK)도 그대로입니다.
+
+---
+
+### 2.11 StatefulSet 재생성 → 같은 PVC에 연결
+
+StatefulSet을 다시 배포합니다. 같은 PVC 이름(`mysql-data`)을 참조하므로 기존 데이터가 자동으로 연결됩니다:
+
+```bash
+kubectl apply -f examples/mysql-statefulset.yaml
+```
+
+Pod가 Ready 될 때까지 대기:
 ```bash
 kubectl get pods -n db-demo -w
 ```
@@ -413,9 +473,9 @@ mysql-0   1/1     Running             0          15s
 
 ---
 
-### 2.10 데이터 영속성 확인: 재접속 후 데이터 조회
+### 2.12 데이터 영속성 확인: 재접속 후 데이터 조회
 
-Pod가 다시 Ready 상태가 되면 MySQL에 다시 접속합니다.
+MySQL에 다시 접속합니다:
 
 ```bash
 kubectl exec -it mysql-0 -n db-demo -- mysql -uroot -p'Training2026!'
@@ -454,7 +514,7 @@ EXIT;
 
 ---
 
-### 2.11 리소스 상태 최종 확인
+### 2.13 리소스 상태 최종 확인
 
 ```bash
 # 모든 리소스 확인
@@ -478,7 +538,7 @@ persistentvolumeclaim/mysql-data-mysql-0   Bound    pvc-xxxxxxxx-xxxx-xxxx-xxxx-
 
 ---
 
-### 2.12 정리
+### 2.14 정리
 
 실습이 끝나면 네임스페이스를 삭제하여 모든 리소스를 정리합니다.
 

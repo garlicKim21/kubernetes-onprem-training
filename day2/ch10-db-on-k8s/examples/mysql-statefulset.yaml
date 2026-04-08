@@ -1,31 +1,12 @@
----
-# Headless Service: StatefulSet의 Pod별 고유 DNS를 제공
-# mysql-0.mysql-svc.db-demo.svc.cluster.local 형태로 접근 가능
-apiVersion: v1
-kind: Service
-metadata:
-  name: mysql-svc
-  namespace: db-demo
-  labels:
-    app: mysql
-spec:
-  clusterIP: None          # Headless Service (ClusterIP 없음)
-  selector:
-    app: mysql
-  ports:
-    - port: 3306
-      targetPort: 3306
-      name: mysql
-
----
 # StatefulSet: MySQL 단일 인스턴스 배포
+# PVC는 별도 파일(mysql-pvc.yaml)에서 미리 생성합니다
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: mysql
   namespace: db-demo
 spec:
-  serviceName: mysql-svc       # 위에서 생성한 Headless Service 이름
+  serviceName: mysql-svc       # Headless Service 이름
   replicas: 1                  # MySQL 단일 인스턴스
   selector:
     matchLabels:
@@ -77,15 +58,7 @@ spec:
                 - -uroot
             initialDelaySeconds: 30
             periodSeconds: 10
-
-  # volumeClaimTemplates: Pod별 개별 PVC를 자동 생성
-  volumeClaimTemplates:
-    - metadata:
-        name: mysql-data
-      spec:
-        accessModes:
-          - ReadWriteOnce              # 단일 노드에서 읽기/쓰기
-        storageClassName: vsphere-csi  # vSphere CSI 동적 프로비저닝
-        resources:
-          requests:
-            storage: 5Gi               # 5GiB 스토리지 요청
+      volumes:
+        - name: mysql-data
+          persistentVolumeClaim:
+            claimName: mysql-data          # 별도 생성한 PVC 참조
