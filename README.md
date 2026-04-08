@@ -120,20 +120,25 @@ choco install kubernetes-cli
 
 1. **[https://lab.basphere.dev](https://lab.basphere.dev)** 에 접속합니다
 2. 비밀번호를 입력합니다 (강사가 구두로 안내)
-3. 자신의 Lab 번호 버튼을 클릭하여 `kubeconfig.yaml` 파일을 다운로드합니다
+3. 자신의 Lab 번호 버튼을 클릭하여 `lab-XX.yaml` 파일을 다운로드합니다 (XX는 본인 번호)
 4. 다운로드한 파일에는 개인 네임스페이스(`lab-XX`)가 기본 설정되어 있습니다
 
 ### Step 4: kubectl 설정 및 접속 확인
 
 ```bash
-# 다운로드한 kubeconfig 파일을 설정 (파일 경로는 다운로드 위치에 맞게 조정)
-
-# Windows (PowerShell)
-$env:KUBECONFIG = "$HOME\Downloads\lab-XX.yaml"
-
 # macOS / Linux
 export KUBECONFIG=~/Downloads/lab-XX.yaml
 
+# Windows (PowerShell) — PowerShell 터미널에서 직접 사용하는 경우
+$env:KUBECONFIG = "$HOME\Downloads\lab-XX.yaml"
+
+# Windows (WSL) — WSL에서 사용하는 경우
+# Windows에서 다운로드한 파일은 /mnt/c/Users/{사용자명}/Downloads/ 경로에 있습니다
+cp /mnt/c/Users/{사용자명}/Downloads/lab-XX.yaml ~/lab-XX.yaml
+export KUBECONFIG=~/lab-XX.yaml
+```
+
+```bash
 # 접속 테스트
 kubectl get nodes
 kubectl get pods -A

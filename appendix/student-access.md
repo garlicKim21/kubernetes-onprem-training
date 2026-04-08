@@ -104,14 +104,20 @@ grep "token:" ~/Downloads/lab-XX.yaml | awk '{print $2}'
 
 ### kubeconfig 설정
 
-강사가 배포한 kubeconfig 파일을 사용합니다.
+Lab Portal(https://lab.basphere.dev)에서 다운로드한 `lab-XX.yaml` 파일을 사용합니다.
 
 ```bash
-# 1. kubeconfig 파일을 홈 디렉토리에 저장
-mkdir -p ~/.kube
-cp student-kubeconfig.yaml ~/.kube/config
+# macOS / Linux
+export KUBECONFIG=~/Downloads/lab-XX.yaml
 
-# 2. 접속 테스트
+# Windows (PowerShell)
+$env:KUBECONFIG = "$HOME\Downloads\lab-XX.yaml"
+
+# Windows (WSL) — Windows에서 다운로드한 파일을 WSL로 복사
+cp /mnt/c/Users/{사용자명}/Downloads/lab-XX.yaml ~/lab-XX.yaml
+export KUBECONFIG=~/lab-XX.yaml
+
+# 접속 테스트
 kubectl cluster-info
 ```
 
@@ -144,11 +150,11 @@ wrk-5    Ready    <none>          30d   v1.35.3
 
 ```bash
 # KUBECONFIG 환경변수 사용
-export KUBECONFIG=/path/to/student-kubeconfig.yaml
+export KUBECONFIG=~/lab-XX.yaml
 kubectl get nodes
 
 # 또는 매 명령어마다 --kubeconfig 플래그 사용
-kubectl get nodes --kubeconfig=/path/to/student-kubeconfig.yaml
+kubectl get nodes --kubeconfig=~/lab-XX.yaml
 ```
 
 ### 수강생 kubectl 권한
