@@ -587,6 +587,13 @@ hubble observe --verdict DROPPED
 
 > **참고**: `cilium hubble port-forward`는 Hubble Relay Pod에 대한 포트 포워딩을 설정합니다.
 > 터미널 세션이 끝나면 자동으로 종료되므로, 새 터미널에서 사용할 때마다 다시 실행해야 합니다.
+>
+> **포트 충돌 에러가 발생하면**: `Unable to listen on any of the requested ports: [{4245 4245}]` 에러는 이전 port-forward 프로세스가 남아있기 때문입니다.
+> ```bash
+> # 기존 프로세스 종료 후 다시 실행
+> kill $(lsof -t -i:4245) 2>/dev/null
+> cilium hubble port-forward &
+> ```
 
 ---
 
