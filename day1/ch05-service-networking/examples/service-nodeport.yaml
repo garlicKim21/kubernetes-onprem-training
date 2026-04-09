@@ -10,4 +10,4 @@ spec:
     - protocol: TCP
       port: 80            # Service 포트 (ClusterIP로 접근 시)
       targetPort: 80      # Pod의 컨테이너 포트
-      nodePort: 30080     # 노드 포트 (30000-32767)
+      nodePort: 30029     # 노드 포트 (30000-32767)

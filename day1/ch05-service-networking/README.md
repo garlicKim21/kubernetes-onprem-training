@@ -466,24 +466,49 @@ kubectl get pods -l app=web
 #### Step 3. Headless Service DNS 조회 — Pod IP 직접 반환
 
 ```bash
-# Headless Service 이름으로 DNS 조회
-kubectl run dns-test --image=busybox:1.36 --rm -it --restart=Never -- nslookup headless-svc
-# → 3개 Pod IP가 모두 반환됨 (ClusterIP가 아닌 실제 Pod IP!)
+# Headless Service 이름으로 DNS 조회 (FQDN 사용)
+kubectl run dns-test --image=busybox:1.36 --rm -it --restart=Never -- nslookup headless-svc.default.svc.cluster.local
 ```
+
+**예상 출력:**
+```
+Name:   headless-svc.default.svc.cluster.local
+Address: 10.244.x.x
+Name:   headless-svc.default.svc.cluster.local
+Address: 10.244.x.x
+Name:   headless-svc.default.svc.cluster.local
+Address: 10.244.x.x
+```
+
+> 3개 Pod IP가 모두 반환됩니다. 일반 Service였다면 ClusterIP 1개만 반환되지만, Headless Service는 **Pod IP를 직접 반환**합니다.
+>
+> **참고**: 짧은 이름(`nslookup headless-svc`)으로도 최종적으로 해석되지만, busybox nslookup이 search domain을 순서대로 시도하면서 NXDOMAIN 에러가 먼저 출력될 수 있습니다. 혼란을 피하려면 **FQDN(전체 도메인 이름)**을 사용하세요.
 
 #### Step 4. 개별 Pod 지정 호출
 
 ```bash
 # web-0 Pod만 지정해서 DNS 조회
-kubectl run dns-test2 --image=busybox:1.36 --rm -it --restart=Never -- nslookup web-0.headless-svc
-# → web-0 Pod의 IP만 반환 (항상 동일)
-
-# web-2 Pod만 지정해서 DNS 조회
-kubectl run dns-test3 --image=busybox:1.36 --rm -it --restart=Never -- nslookup web-2.headless-svc
-# → web-2 Pod의 IP만 반환 (항상 동일)
+kubectl run dns-test2 --image=busybox:1.36 --rm -it --restart=Never -- nslookup web-0.headless-svc.default.svc.cluster.local
 ```
 
-> **핵심**: 일반 Service는 DNS 조회 시 ClusterIP 하나만 반환하지만, Headless Service는 **모든 Pod IP를 직접 반환**합니다. 또한 `pod-name.svc-name` 형식으로 **특정 Pod를 지정**할 수 있습니다.
+**예상 출력:**
+```
+Name:   web-0.headless-svc.default.svc.cluster.local
+Address: 10.244.x.x    ← web-0의 IP (항상 동일)
+```
+
+```bash
+# web-2 Pod만 지정해서 DNS 조회
+kubectl run dns-test3 --image=busybox:1.36 --rm -it --restart=Never -- nslookup web-2.headless-svc.default.svc.cluster.local
+```
+
+**예상 출력:**
+```
+Name:   web-2.headless-svc.default.svc.cluster.local
+Address: 10.244.x.x    ← web-2의 IP (항상 동일, web-0과는 다름)
+```
+
+> **핵심**: `pod-name.svc-name.namespace.svc.cluster.local`로 **특정 Pod를 지정**하여 항상 같은 Pod에 도달할 수 있습니다. 이것이 DB Master-Slave 구조에서 Master Pod에만 쓰기 요청을 보낼 수 있는 이유입니다 (Ch10에서 다룸).
 
 #### Step 5. 정리
 
