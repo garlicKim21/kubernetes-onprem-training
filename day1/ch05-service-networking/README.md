@@ -251,17 +251,23 @@ nginx-clusterip                               # 같은 네임스페이스 내에
 ### DNS 확인 데모
 
 ```bash
-# busybox Pod에서 DNS 테스트
+# busybox Pod에서 DNS 테스트 (FQDN 사용)
 kubectl run dns-test --image=busybox:1.37 --rm -it --restart=Never -- \
-  nslookup nginx-clusterip
-
-# 예상 출력:
-# Server:    10.96.0.10
-# Address 1: 10.96.0.10 kube-dns.kube-system.svc.cluster.local
-#
-# Name:      nginx-clusterip
-# Address 1: 10.96.xxx.xxx nginx-clusterip.default.svc.cluster.local
+  nslookup nginx-clusterip.default.svc.cluster.local
 ```
+
+**예상 출력:**
+```
+Server:    10.96.0.10
+Address:   10.96.0.10:53
+
+Name:      nginx-clusterip.default.svc.cluster.local
+Address:   10.96.xxx.xxx    ← ClusterIP
+```
+
+> **참고**: busybox의 nslookup은 알려진 버그로 인해 짧은 이름(예: `nslookup nginx-clusterip`)이 실패할 수 있습니다.
+> FQDN(`서비스명.네임스페이스.svc.cluster.local`)을 사용하면 확실하게 동작합니다.
+> 자세한 내용은 [부록: BusyBox nslookup 버그](../../appendix/busybox-nslookup-bug.md)를 참고하세요.
 
 ---
 
@@ -482,7 +488,7 @@ Address: 10.244.x.x
 
 > 3개 Pod IP가 모두 반환됩니다. 일반 Service였다면 ClusterIP 1개만 반환되지만, Headless Service는 **Pod IP를 직접 반환**합니다.
 >
-> **참고**: 짧은 이름(`nslookup headless-svc`)으로도 최종적으로 해석되지만, busybox nslookup이 search domain을 순서대로 시도하면서 NXDOMAIN 에러가 먼저 출력될 수 있습니다. 혼란을 피하려면 **FQDN(전체 도메인 이름)**을 사용하세요.
+> **참고**: 짧은 이름(`nslookup headless-svc`)은 busybox nslookup의 알려진 버그로 인해 NXDOMAIN이 출력될 수 있습니다. FQDN을 사용하면 확실하게 동작합니다. 자세한 내용은 [부록: BusyBox nslookup 버그](../../appendix/busybox-nslookup-bug.md)를 참고하세요.
 
 #### Step 4. 개별 Pod 지정 호출
 
