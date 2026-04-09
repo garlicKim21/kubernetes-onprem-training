@@ -522,106 +522,90 @@ kubectl get pv | grep db-demo
 
 ---
 
-## 3. 실무 팁: 앱에서 DB에 접근하는 3가지 패턴
+## 3. 실무 팁: DB HA와 Failover
 
 오늘 실습에서는 `mysql-0.mysql-svc` (Headless Service FQDN)으로 직접 Pod를 지정하여 MySQL에 접속했습니다. 단일 인스턴스에서는 이것으로 충분하지만, **Primary-Standby HA 구성**에서는 중요한 질문이 생깁니다:
 
 > "앱이 Primary Pod를 직접 가리키고 있는데, Primary가 죽으면 어떻게 Standby로 전환하나요?"
 
-이 문제를 해결하는 3가지 패턴이 있습니다.
+### 핵심: Kubernetes는 DB Failover를 모릅니다
 
-### 패턴 1: Headless Service FQDN 직접 지정
+먼저 이해해야 할 것이 있습니다. **Kubernetes 자체는 "이 Pod가 Primary다, 저 Pod가 Standby다"를 모릅니다.** StatefulSet은 "Pod가 죽으면 같은 이름으로 재생성"만 할 뿐, DB의 역할(Primary/Standby)을 관리하지 않습니다.
 
-```
-앱 → mysql-0.mysql-svc (Primary 고정)
-```
+따라서 DB Failover는 반드시 **Kubernetes 외부의 무언가**가 처리해야 합니다:
 
-- 가장 단순하지만, **Primary 장애 시 자동 Failover 불가**
-- 앱의 DB 연결 설정을 수동으로 `mysql-1.mysql-svc`로 변경해야 함
-- **적합한 경우**: 개발/테스트 환경, 단일 인스턴스 (오늘 실습이 이 방식)
-
-### 패턴 2: Label Selector 기반 Service
+### Operator 없이 (오늘 실습)
 
 ```
-앱 → mysql-primary (ClusterIP Service, selector: role=primary)
-                    └→ 평소: mysql-0 (Primary)
-                    └→ Failover 후: mysql-1 (새 Primary)
+앱 → mysql-0.mysql-svc (Headless FQDN, Primary 고정)
+
+mysql-0 장애 발생!
+  → StatefulSet이 mysql-0 Pod를 재생성 (같은 PVC에 연결)
+  → MySQL이 다시 시작되면 기존 데이터로 복구
+  → 앱은 같은 주소(mysql-0.mysql-svc)로 재연결
 ```
+
+- 단일 인스턴스라면 이것으로 충분 (Pod가 재생성되면 복구)
+- 하지만 **진정한 HA(Standby 즉시 승격)는 불가능**
+- 재생성까지의 다운타임 발생 (수십 초 ~ 수 분)
+
+### Operator 사용 시 (프로덕션)
+
+DB Operator(CNPG, Percona Operator 등)는 내부적으로 다음을 **자동화**합니다:
+
+```
+                    ┌─────────────────────────────┐
+                    │        DB Operator           │
+                    │  (Failover 감지 및 자동 처리) │
+                    └──────────┬──────────────────┘
+                               │
+            ┌──────────────────┼──────────────────┐
+            │                  │                   │
+            ▼                  ▼                   ▼
+  ┌─────────────────┐  ┌──────────────┐  ┌──────────────┐
+  │ Label 관리       │  │ 프록시 관리   │  │ Replication  │
+  │ role=primary     │  │ PgBouncer    │  │ 관리         │
+  │ → Service 전환   │  │ ProxySQL     │  │              │
+  └─────────────────┘  └──────────────┘  └──────────────┘
+```
+
+1. **Label Selector Service**: Operator가 Pod의 `role` label을 관리합니다. Failover 시 Standby Pod에 `role=primary`를 부여하면, `mysql-primary` Service가 자동으로 새 Primary를 가리킵니다.
+
+2. **DB 프록시**: Operator가 ProxySQL이나 PgBouncer를 함께 배포하고 관리합니다. 프록시가 Primary 헬스체크, 자동 전환, Read/Write 분리, 커넥션 풀링을 처리합니다.
+
+| Operator | DB | 내장 프록시 | Failover 방식 |
+|----------|-----|-----------|--------------|
+| **CNPG** | PostgreSQL | PgBouncer | Streaming Replication + 자동 승격 |
+| **Percona Operator** | MySQL | ProxySQL / HAProxy | Group Replication + 프록시 전환 |
+| **Zalando Operator** | PostgreSQL | (없음, Patroni 사용) | Patroni가 리더 선출 |
+
+**앱 입장에서는** Operator가 제공하는 Service 또는 프록시 주소만 알면 됩니다:
 
 ```yaml
-# 쓰기 전용 Service
-apiVersion: v1
-kind: Service
-metadata:
-  name: mysql-primary
-spec:
-  selector:
-    app: mysql
-    role: primary        # ← 이 label을 가진 Pod만 선택
-  ports:
-    - port: 3306
-
-# 읽기 전용 Service (Headless — Replica들에 분산)
-apiVersion: v1
-kind: Service
-metadata:
-  name: mysql-read
-spec:
-  clusterIP: None
-  selector:
-    app: mysql
-    role: replica
-  ports:
-    - port: 3306
+# 앱의 DB 연결 설정
+DB_HOST: mysql-primary    # Operator가 관리하는 Service (또는 프록시)
+DB_PORT: "3306"
+# → Primary가 바뀌어도 앱 설정 변경 불필요
 ```
 
-- Failover 시 Operator가 **Pod의 label(`role`)을 자동 변경** → Service가 새 Primary를 가리킴
-- 앱은 `mysql-primary`를 그대로 사용 (설정 변경 불필요)
-- **적합한 경우**: DB Operator 기반 HA 구성
+### Headless Service는 어디에 쓰이나?
 
-### 패턴 3: DB 프록시 (Operator와 함께 사용)
+위에서 보듯, 앱은 Headless FQDN(`mysql-0.mysql-svc`)을 직접 사용하지 않습니다. 그렇다면 Headless Service는 왜 필요할까요?
 
-```
-앱 → ProxySQL / PgBouncer → Primary Pod
-                            프록시가 자동으로:
-                            - Primary 헬스체크
-                            - 장애 감지 시 Standby로 전환
-                            - Read/Write 분리
-                            - 커넥션 풀링
-```
-
-| 프록시 | 대상 DB | 주요 기능 |
-|--------|---------|----------|
-| **ProxySQL** | MySQL | 쿼리 라우팅, Read/Write 분리, 자동 Failover, 커넥션 풀링 |
-| **PgBouncer** | PostgreSQL | 커넥션 풀링, Failover (CNPG에 내장) |
-| **MaxScale** | MariaDB | 쿼리 라우팅, 모니터링, Failover |
-
-- 앱은 프록시 주소만 알면 됨 → Primary/Standby를 몰라도 됨
-- 프록시가 모든 장애 처리를 담당
-- **적합한 경우**: 프로덕션 HA 환경
-
-> **현실적인 이야기**: Kubernetes에서 DB를 운영하는 것 자체가 아직 도전적인 영역입니다.
-> 많은 기업이 클라우드 관리형 DB(AWS RDS, GCP Cloud SQL)나 VM에 직접 설치하는 전통 방식을 사용합니다.
-> Kubernetes 위에서 DB를 운영하는 경우, 대부분 **DB Operator**(CNPG, Percona Operator)를 사용하며,
-> 이 Operator들이 내부적으로 프록시(PgBouncer, ProxySQL)와 label 관리를 모두 처리합니다.
-> 즉, 패턴 2와 3을 직접 구성하기보다는 **Operator가 이 패턴들을 자동화**해주는 것이 현재 추세입니다.
-
-### 그렇다면 Headless Service는 왜 필요한가?
-
-Headless Service의 Pod별 DNS(`mysql-0.mysql-svc`, `mysql-1.mysql-svc`)는 **앱이 직접 사용하는 것이 아니라**, DB 노드 간 내부 통신에 사용됩니다:
+**DB 노드 간 내부 통신**에 사용됩니다:
 
 ```
 [mysql-0 (Primary)] ──── Replication ────→ [mysql-1 (Standby)]
      mysql-0.mysql-svc                          mysql-1.mysql-svc
-     ↑                                          
+     ↑
      Headless Service DNS로 서로를 찾음
 ```
 
 | 접근 주체 | 사용하는 엔드포인트 | 이유 |
 |-----------|-------------------|------|
-| **앱 (쓰기)** | `mysql-primary` (Service) 또는 프록시 | 자동 Failover 필요 |
-| **앱 (읽기)** | `mysql-read` (Headless) 또는 프록시 | Replica 분산 |
-| **DB 노드 간** | `mysql-0.mysql-svc` (Headless FQDN) | Replication, 클러스터 통신 |
+| **앱** | `mysql-primary` (Service) 또는 프록시 | 자동 Failover, 앱 설정 변경 불필요 |
+| **DB 노드 간** | `mysql-0.mysql-svc` (Headless FQDN) | Replication, 클러스터 내부 통신 |
+| **Operator** | `mysql-0.mysql-svc`, `mysql-1.mysql-svc` | 헬스체크, 승격 명령 전달 |
 
 ---
 
