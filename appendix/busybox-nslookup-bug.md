@@ -134,7 +134,7 @@ kubectl run dns-test --image=alpine --rm -it --restart=Never -- nslookup web-0.h
 
 ### Kubernetes 공식 문서
 
-- [Debugging DNS Resolution](https://kubernetes.io/docs/tasks/administer-cluster/dns-debugging-resolution/) — 공식 문서에서 `busybox:1.28` 사용을 권장 (최신 버전의 nslookup 버그를 암묵적으로 인정).
+- [Debugging DNS Resolution](https://kubernetes.io/docs/tasks/administer-cluster/dns-debugging-resolution/) — 공식 DNS 디버깅 가이드. busybox가 아닌 `registry.k8s.io/e2e-test-images/agnhost:2.39` 이미지를 사용합니다. 과거에는 `busybox:1.28`을 권장했으나, 현재는 busybox 자체를 DNS 테스트에 사용하지 않도록 변경되었습니다.
 
 ### BusyBox 소스 코드
 
