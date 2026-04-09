@@ -579,7 +579,7 @@ spec:
 - 앱은 `mysql-primary`를 그대로 사용 (설정 변경 불필요)
 - **적합한 경우**: DB Operator 기반 HA 구성
 
-### 패턴 3: DB 프록시 (프로덕션에서 가장 일반적)
+### 패턴 3: DB 프록시 (Operator와 함께 사용)
 
 ```
 앱 → ProxySQL / PgBouncer → Primary Pod
@@ -599,6 +599,12 @@ spec:
 - 앱은 프록시 주소만 알면 됨 → Primary/Standby를 몰라도 됨
 - 프록시가 모든 장애 처리를 담당
 - **적합한 경우**: 프로덕션 HA 환경
+
+> **현실적인 이야기**: Kubernetes에서 DB를 운영하는 것 자체가 아직 도전적인 영역입니다.
+> 많은 기업이 클라우드 관리형 DB(AWS RDS, GCP Cloud SQL)나 VM에 직접 설치하는 전통 방식을 사용합니다.
+> Kubernetes 위에서 DB를 운영하는 경우, 대부분 **DB Operator**(CNPG, Percona Operator)를 사용하며,
+> 이 Operator들이 내부적으로 프록시(PgBouncer, ProxySQL)와 label 관리를 모두 처리합니다.
+> 즉, 패턴 2와 3을 직접 구성하기보다는 **Operator가 이 패턴들을 자동화**해주는 것이 현재 추세입니다.
 
 ### 그렇다면 Headless Service는 왜 필요한가?
 
