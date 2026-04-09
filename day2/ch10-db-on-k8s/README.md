@@ -522,7 +522,104 @@ kubectl get pv | grep db-demo
 
 ---
 
-## 3. 더 나아가기: CloudNativePG (CNPG)
+## 3. 실무 팁: 앱에서 DB에 접근하는 3가지 패턴
+
+오늘 실습에서는 `mysql-0.mysql-svc` (Headless Service FQDN)으로 직접 Pod를 지정하여 MySQL에 접속했습니다. 단일 인스턴스에서는 이것으로 충분하지만, **Primary-Standby HA 구성**에서는 중요한 질문이 생깁니다:
+
+> "앱이 Primary Pod를 직접 가리키고 있는데, Primary가 죽으면 어떻게 Standby로 전환하나요?"
+
+이 문제를 해결하는 3가지 패턴이 있습니다.
+
+### 패턴 1: Headless Service FQDN 직접 지정
+
+```
+앱 → mysql-0.mysql-svc (Primary 고정)
+```
+
+- 가장 단순하지만, **Primary 장애 시 자동 Failover 불가**
+- 앱의 DB 연결 설정을 수동으로 `mysql-1.mysql-svc`로 변경해야 함
+- **적합한 경우**: 개발/테스트 환경, 단일 인스턴스 (오늘 실습이 이 방식)
+
+### 패턴 2: Label Selector 기반 Service
+
+```
+앱 → mysql-primary (ClusterIP Service, selector: role=primary)
+                    └→ 평소: mysql-0 (Primary)
+                    └→ Failover 후: mysql-1 (새 Primary)
+```
+
+```yaml
+# 쓰기 전용 Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql-primary
+spec:
+  selector:
+    app: mysql
+    role: primary        # ← 이 label을 가진 Pod만 선택
+  ports:
+    - port: 3306
+
+# 읽기 전용 Service (Headless — Replica들에 분산)
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql-read
+spec:
+  clusterIP: None
+  selector:
+    app: mysql
+    role: replica
+  ports:
+    - port: 3306
+```
+
+- Failover 시 Operator가 **Pod의 label(`role`)을 자동 변경** → Service가 새 Primary를 가리킴
+- 앱은 `mysql-primary`를 그대로 사용 (설정 변경 불필요)
+- **적합한 경우**: DB Operator 기반 HA 구성
+
+### 패턴 3: DB 프록시 (프로덕션에서 가장 일반적)
+
+```
+앱 → ProxySQL / PgBouncer → Primary Pod
+                            프록시가 자동으로:
+                            - Primary 헬스체크
+                            - 장애 감지 시 Standby로 전환
+                            - Read/Write 분리
+                            - 커넥션 풀링
+```
+
+| 프록시 | 대상 DB | 주요 기능 |
+|--------|---------|----------|
+| **ProxySQL** | MySQL | 쿼리 라우팅, Read/Write 분리, 자동 Failover, 커넥션 풀링 |
+| **PgBouncer** | PostgreSQL | 커넥션 풀링, Failover (CNPG에 내장) |
+| **MaxScale** | MariaDB | 쿼리 라우팅, 모니터링, Failover |
+
+- 앱은 프록시 주소만 알면 됨 → Primary/Standby를 몰라도 됨
+- 프록시가 모든 장애 처리를 담당
+- **적합한 경우**: 프로덕션 HA 환경
+
+### 그렇다면 Headless Service는 왜 필요한가?
+
+Headless Service의 Pod별 DNS(`mysql-0.mysql-svc`, `mysql-1.mysql-svc`)는 **앱이 직접 사용하는 것이 아니라**, DB 노드 간 내부 통신에 사용됩니다:
+
+```
+[mysql-0 (Primary)] ──── Replication ────→ [mysql-1 (Standby)]
+     mysql-0.mysql-svc                          mysql-1.mysql-svc
+     ↑                                          
+     Headless Service DNS로 서로를 찾음
+```
+
+| 접근 주체 | 사용하는 엔드포인트 | 이유 |
+|-----------|-------------------|------|
+| **앱 (쓰기)** | `mysql-primary` (Service) 또는 프록시 | 자동 Failover 필요 |
+| **앱 (읽기)** | `mysql-read` (Headless) 또는 프록시 | Replica 분산 |
+| **DB 노드 간** | `mysql-0.mysql-svc` (Headless FQDN) | Replication, 클러스터 통신 |
+
+---
+
+## 4. 더 나아가기: CloudNativePG (CNPG)
 
 지금까지 StatefulSet으로 MySQL을 직접 배포하는 방법을 배웠습니다. 이 방식은 동작하지만, 프로덕션 환경에서는 다음과 같은 한계가 있습니다:
 
