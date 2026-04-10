@@ -18,28 +18,28 @@
 
 ```bash
 kubectl apply -f examples/broken-crash.yaml
-kubectl get pod broken-crash
+kubectl get pod broken-probe
 ```
 
-상태를 확인하고, 원인을 찾아보세요:
+30초 정도 기다린 후 상태를 확인하세요:
 ```bash
-kubectl describe pod broken-crash
-kubectl logs broken-crash
+kubectl get pod broken-probe
+kubectl describe pod broken-probe
 ```
 
 <details>
 <summary>💡 힌트 (클릭하여 펼치기)</summary>
 
-`kubectl describe`의 Events 섹션을 확인하세요. 컨테이너가 시작할 때 어떤 명령어를 실행하나요?
+`kubectl describe`의 Events에서 Probe 관련 메시지를 확인하세요. nginx에 `/healthz` 경로가 있을까요?
 
 </details>
 
 <details>
 <summary>✅ 정답</summary>
 
-**CrashLoopBackOff** — 컨테이너의 `command`가 `invalid-command-that-does-not-exist`로 설정되어 있어 실행 즉시 실패합니다. nginx 이미지에 존재하지 않는 명령어입니다.
+**CrashLoopBackOff (Liveness Probe 실패)** — nginx에는 기본적으로 `/healthz` 경로가 없습니다. Readiness Probe가 계속 404를 받아 `READY 0/1` 상태가 되고, Liveness Probe도 실패하여 컨테이너가 반복 재시작됩니다.
 
-**해결**: YAML에서 `command` 필드를 제거하면 nginx의 기본 명령어가 실행됩니다.
+**해결**: Probe 경로를 nginx가 응답하는 `/`로 변경하면 됩니다.
 
 </details>
 
@@ -108,7 +108,7 @@ Events에서 `FailedScheduling` 메시지를 확인하세요. `resources.request
 ### 정리
 
 ```bash
-kubectl delete pod broken-crash broken-image broken-pending
+kubectl delete pod broken-probe broken-image broken-pending
 ```
 
 ## 디버깅 요약
