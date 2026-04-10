@@ -38,6 +38,8 @@ kubectl get configmap my-html
 
 Pod 이름이 HTML에 표시되도록 nginx SSI(Server Side Includes)를 활성화합니다.
 
+> **SSI란?** nginx가 HTML을 클라이언트에게 보내기 전에, `<!--#echo var="hostname" -->` 같은 지시문을 서버 측에서 실제 값으로 치환하는 기능입니다. 이를 통해 JavaScript 없이도 Pod의 hostname을 HTML에 표시할 수 있습니다.
+
 ```bash
 kubectl apply -f examples/my-nginx-conf-configmap.yaml
 ```
