@@ -1,0 +1,18 @@
+# PVC를 마운트하여 데이터를 쓰는 Pod
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pvc-writer
+spec:
+  containers:
+    - name: pvc-writer
+      image: busybox:1.37
+      command: ["sh", "-c", "echo 'PV test data from Kubernetes' > /data/test.txt && echo 'Write complete' && sleep 3600"]
+      volumeMounts:
+        - name: my-vol
+          mountPath: /data
+  volumes:
+    - name: my-vol
+      persistentVolumeClaim:
+        claimName: demo-pvc        # 앞서 생성한 PVC 이름
+  restartPolicy: Never

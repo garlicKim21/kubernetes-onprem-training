@@ -1,0 +1,18 @@
+# 동적 프로비저닝된 PVC를 마운트하는 Pod
+apiVersion: v1
+kind: Pod
+metadata:
+  name: dynamic-pvc-test
+spec:
+  containers:
+    - name: test
+      image: busybox:1.37
+      command: ["sh", "-c", "echo 'Dynamic provisioning test' > /data/test.txt && cat /data/test.txt && sleep 3600"]
+      volumeMounts:
+        - name: vol
+          mountPath: /data
+  volumes:
+    - name: vol
+      persistentVolumeClaim:
+        claimName: dynamic-demo-pvc    # 앞서 생성한 PVC 이름
+  restartPolicy: Never
