@@ -10,22 +10,20 @@
 
 ## Step 1: ConfigMap 만들기 — 나만의 HTML
 
-자신의 이름과 소속이 표시되는 HTML을 ConfigMap으로 만듭니다.
+`examples/my-html-configmap.yaml` 파일을 열어 `[본인 이름]`과 `[소속]`을 자신의 정보로 수정합니다.
 
-```bash
-kubectl create configmap my-html --from-literal=index.html='<html>
-<head><title>My K8s App</title></head>
-<body style="font-family:sans-serif; text-align:center; padding:50px;">
-<h1>Hello, I am [여기에 본인 이름]!</h1>
+```yaml
+# examples/my-html-configmap.yaml 에서 이 부분을 수정하세요:
+<h1>Hello, I am [본인 이름]!</h1>
 <p>Department: [소속]</p>
-<p>This page is served from Kubernetes</p>
-<p>Pod: <!--#echo var="hostname" --></p>
-</body></html>'
 ```
 
-> 💡 `[여기에 본인 이름]`과 `[소속]`을 자신의 정보로 바꾸세요!
->
-> 예: `Hello, I am Hong Gildong!`, `Department: DevOps`
+> 💡 예시: `Hello, I am Hong Gildong!`, `Department: DevOps`
+
+수정 후 적용:
+```bash
+kubectl apply -f examples/my-html-configmap.yaml
+```
 
 **확인:**
 ```bash
@@ -41,11 +39,7 @@ kubectl get configmap my-html
 Pod 이름이 HTML에 표시되도록 nginx SSI(Server Side Includes)를 활성화합니다.
 
 ```bash
-kubectl create configmap my-nginx-conf --from-literal=default.conf='server {
-  listen 80;
-  root /usr/share/nginx/html;
-  ssi on;
-}'
+kubectl apply -f examples/my-nginx-conf-configmap.yaml
 ```
 
 ---
@@ -53,45 +47,7 @@ kubectl create configmap my-nginx-conf --from-literal=default.conf='server {
 ## Step 3: Deployment 생성 — 3개 복제본
 
 ```bash
-kubectl apply -f - <<'EOF'
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: my-web
-spec:
-  replicas: 3
-  selector:
-    matchLabels:
-      app: my-web
-  template:
-    metadata:
-      labels:
-        app: my-web
-    spec:
-      containers:
-        - name: nginx
-          image: nginx:1.27
-          ports:
-            - containerPort: 80
-          volumeMounts:
-            - name: html
-              mountPath: /usr/share/nginx/html/index.html
-              subPath: index.html
-            - name: conf
-              mountPath: /etc/nginx/conf.d/default.conf
-              subPath: default.conf
-          resources:
-            requests:
-              cpu: 10m
-              memory: 32Mi
-      volumes:
-        - name: html
-          configMap:
-            name: my-html
-        - name: conf
-          configMap:
-            name: my-nginx-conf
-EOF
+kubectl apply -f examples/my-web-deployment.yaml
 ```
 
 **확인:**
@@ -108,7 +64,7 @@ kubectl get pods -l app=my-web
 ## Step 4: Service 생성
 
 ```bash
-kubectl expose deployment my-web --port=80 --name=my-web-svc
+kubectl apply -f examples/my-web-service.yaml
 ```
 
 **확인:**

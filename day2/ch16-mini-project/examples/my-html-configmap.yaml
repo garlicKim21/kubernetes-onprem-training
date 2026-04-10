@@ -1,0 +1,17 @@
+# 자기 이름이 표시되는 HTML ConfigMap
+# [본인 이름]과 [소속]을 수정하세요!
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: my-html
+data:
+  index.html: |
+    <html>
+    <head><title>My K8s App</title></head>
+    <body style="font-family:sans-serif; text-align:center; padding:50px;">
+      <h1>Hello, I am [본인 이름]!</h1>
+      <p>Department: [소속]</p>
+      <p>This page is served from Kubernetes</p>
+      <p>Pod: <!--#echo var="hostname" --></p>
+    </body>
+    </html>

@@ -1,0 +1,12 @@
+# nginx SSI 활성화 설정 (Pod 이름이 HTML에 표시되도록)
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: my-nginx-conf
+data:
+  default.conf: |
+    server {
+      listen 80;
+      root /usr/share/nginx/html;
+      ssi on;
+    }

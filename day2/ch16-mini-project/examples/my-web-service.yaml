@@ -1,0 +1,11 @@
+# ClusterIP Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-web-svc
+spec:
+  selector:
+    app: my-web
+  ports:
+    - port: 80
+      targetPort: 80
