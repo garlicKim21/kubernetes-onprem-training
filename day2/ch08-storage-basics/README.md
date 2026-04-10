@@ -322,19 +322,7 @@ demo-pv   1Gi        RWO            Retain           Bound    default/demo-pvc  
 PV/PVC가 바인딩되었으므로, 이제 Pod에서 PVC를 마운트하여 실제로 데이터를 저장해 봅니다.
 
 ```bash
-# PVC를 마운트하는 Pod 생성
-kubectl run pvc-writer --image=busybox:1.37 --restart=Never \
-  --overrides='{
-    "spec": {
-      "containers": [{
-        "name": "pvc-writer",
-        "image": "busybox:1.37",
-        "command": ["sh", "-c", "echo 쿠버네티스 PV 테스트 데이터입니다 > /data/test.txt && echo 작성 완료 && sleep 3600"],
-        "volumeMounts": [{"name": "my-vol", "mountPath": "/data"}]
-      }],
-      "volumes": [{"name": "my-vol", "persistentVolumeClaim": {"claimName": "demo-pvc"}}]
-    }
-  }'
+kubectl apply -f examples/pvc-writer-pod.yaml
 ```
 
 ```bash
@@ -355,7 +343,7 @@ kubectl exec pvc-writer -- cat /data/test.txt
 
 **예상 출력:**
 ```
-쿠버네티스 PV 테스트 데이터입니다
+PV test data from Kubernetes
 ```
 
 > PVC를 통해 PV에 데이터가 저장되었습니다. 이 데이터는 Pod가 삭제되어도 PV에 남아 있습니다.

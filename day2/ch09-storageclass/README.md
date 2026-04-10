@@ -161,19 +161,7 @@ dynamic-demo-pvc   Pending                                      vsphere-csi    5
 PVC를 사용하는 Pod를 생성하면 `WaitForFirstConsumer` 모드에 의해 비로소 PV가 프로비저닝됩니다.
 
 ```bash
-# PVC를 마운트하는 Pod 생성
-kubectl run dynamic-pvc-test --image=busybox:1.37 --restart=Never \
-  --overrides='{
-    "spec": {
-      "containers": [{
-        "name": "test",
-        "image": "busybox:1.37",
-        "command": ["sh", "-c", "echo 동적 프로비저닝 테스트 > /data/test.txt && cat /data/test.txt && sleep 3600"],
-        "volumeMounts": [{"name": "vol", "mountPath": "/data"}]
-      }],
-      "volumes": [{"name": "vol", "persistentVolumeClaim": {"claimName": "dynamic-demo-pvc"}}]
-    }
-  }'
+kubectl apply -f examples/dynamic-pvc-pod.yaml
 ```
 
 > **참고**: Pod 생성 후 vSphere CSI가 VMDK를 생성하므로 10~30초 정도 소요될 수 있습니다.

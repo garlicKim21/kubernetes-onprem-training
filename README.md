@@ -45,8 +45,10 @@
 | 13:30–14:30 | Ch.12 | 모니터링과 관측성: Prometheus & Grafana |
 | 14:30–15:30 | Ch.13 | 종합 데모: 배포부터 오토스케일링까지 |
 | 15:30–15:40 | — | 휴식 |
-| 15:40–16:40 | Ch.14 | 실무 적용 가이드 |
-| 16:40–17:00 | — | 전체 정리 및 Q&A |
+| 15:40–16:10 | Ch.15 | 트러블슈팅 실습: 고장난 Pod 디버깅 |
+| 16:10–16:50 | Ch.16 | 미니 프로젝트: 나만의 웹 서비스 배포 |
+| 16:50–17:20 | Ch.14 | 실무 적용 가이드 (Helm 데모 포함) |
+| 17:20–17:30 | — | 전체 정리 및 Q&A |
 
 ---
 
@@ -239,6 +241,8 @@ kubernetes-onprem-training/
 │   ├── ch11-hpa-autoscaling/          HPA 오토스케일링
 │   ├── ch12-monitoring/               모니터링과 관측성: Prometheus & Grafana
 │   ├── ch13-comprehensive-demo/       종합 데모: 배포부터 오토스케일링까지
-│   └── ch14-real-world/               실무 적용 가이드
+│   ├── ch14-real-world/               실무 적용 가이드
+│   ├── ch15-troubleshooting-lab/      트러블슈팅 실습: 고장난 Pod 디버깅
+│   └── ch16-mini-project/             미니 프로젝트: 나만의 웹 서비스 배포
 └── appendix/                          부록 자료
 ```
