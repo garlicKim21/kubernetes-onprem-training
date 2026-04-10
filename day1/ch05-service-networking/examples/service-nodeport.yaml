@@ -10,4 +10,5 @@ spec:
     - protocol: TCP
       port: 80            # Service 포트 (ClusterIP로 접근 시)
       targetPort: 80      # Pod의 컨테이너 포트
-      nodePort: 30029     # 노드 포트 (30000-32767)
+      # nodePort를 생략하면 K8s가 30000-32767 범위에서 자동 할당합니다
+      # (여러 수강생이 동시에 생성해도 충돌하지 않음)
