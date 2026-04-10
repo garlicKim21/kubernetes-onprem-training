@@ -112,3 +112,41 @@ kubectl delete svc my-web-svc
 kubectl delete configmap my-html my-nginx-conf
 kubectl delete hpa my-web
 ```
+
+---
+
+## 2일간의 교육을 마치며
+
+이번 교육에서 다룬 내용을 정리합니다:
+
+### Day 1
+- 컨테이너와 쿠버네티스 기본 개념
+- Pod, ReplicaSet, Deployment, StatefulSet, DaemonSet
+- ConfigMap, Secret, 리소스 관리, Probe
+- kubeadm 클러스터 구축
+- Service와 네트워킹 (ClusterIP, NodePort, LoadBalancer, Headless)
+- Cilium CNI와 BGP LoadBalancer
+- Gateway API HTTP 라우팅
+
+### Day 2
+- 스토리지: emptyDir, hostPath, PV, PVC
+- StorageClass와 동적 프로비저닝 (vSphere CSI)
+- StatefulSet과 데이터베이스 운영 (MySQL, Headless Service, 데이터 영속성)
+- HPA 오토스케일링
+- Prometheus & Grafana 모니터링
+- 종합 데모
+- 실무 적용 가이드 (Helm, RBAC, GitOps)
+- 트러블슈팅 실습
+- 미니 프로젝트
+
+### 다음 단계 제안
+
+1. **kubectl 연습**: 다양한 명령어에 익숙해지세요
+2. **개인 환경 구축**: minikube, kind, k3s 등으로 로컬 클러스터를 만들어 실습하세요
+3. **Helm 활용**: 오픈소스 Chart를 설치하고 커스터마이징해 보세요
+4. **GitOps 도입**: ArgoCD를 설치하고 Git 기반 배포를 경험해 보세요
+5. **자격증 도전**: CKAD 또는 CKA 시험에 도전해 보세요
+
+---
+
+> 교육에 참여해 주셔서 감사합니다!
