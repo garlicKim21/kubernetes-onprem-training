@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: broken-crash
+spec:
+  containers:
+    - name: app
+      image: nginx:1.27
+      command: ["invalid-command-that-does-not-exist"]
