@@ -121,3 +121,7 @@ kubectl delete pod broken-probe broken-image broken-pending
 | **Running (0/1)** | `kubectl describe` → Readiness Probe | Probe 실패 (앱이 아직 준비 안 됨) |
 
 > 📖 추가 트러블슈팅 가이드: [부록 — 트러블슈팅](../../appendix/troubleshooting.md)
+
+---
+
+> **다음 챕터**: [Ch.16 미니 프로젝트: 나만의 웹 서비스 배포](../ch16-mini-project/README.md)
