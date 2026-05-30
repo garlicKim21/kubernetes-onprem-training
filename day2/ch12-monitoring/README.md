@@ -267,4 +267,11 @@ spec:
 
 ---
 
+## 심화 랩 (선택)
+
+> 📦 [**Prometheus 용량과 Cardinality**](./lab-capacity-cardinality.md) — Prometheus가 디스크를 왜 이만큼
+> 쓰는지 PromQL로 직접 측정하고, `metricRelabelings`로 용량을 줄여 전/후를 비교합니다.
+
+---
+
 > **다음 챕터**: [Ch.13 종합 데모: 배포부터 오토스케일링까지](../ch13-comprehensive-demo/README.md)
